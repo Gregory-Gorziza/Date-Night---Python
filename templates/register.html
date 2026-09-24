@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastro - DateNight{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="max-width: 800px;">
+    <h2>Crie seu Perfil</h2>
+    <form method="POST" action="{{ url_for('register') }}">
+        
+        <h3>Informações Básicas</h3>
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" class="form-control" required>
+        </div>
+        
+        <h3>Aparência Física</h3>
+        <div class="form-group" style="display:flex; gap:1rem;">
+            <div style="flex:1;">
+                <label for="peso">Peso (kg)</label>
+                <input type="number" id="peso" name="peso" class="form-control" value="70">
+            </div>
+            <div style="flex:1;">
+                <label for="altura">Altura (cm)</label>
+                <input type="number" id="altura" name="altura" class="form-control" value="170">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="genero">Gênero</label>
+            <select name="genero" id="genero" class="form-control">
+                <option value="0">Masculino</option>
+                <option value="1">Feminino</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="prefGenero">Interesse Em</label>
+            <select name="prefGenero" id="prefGenero" class="form-control">
+                <option value="1">Feminino</option>
+                <option value="0">Masculino</option>
+            </select>
+        </div>
+        
+        <!-- Simplified version for the UI - normally we would add all 40 attributes here 
+             but we will default the rest in the backend for this demonstration -->
+             
+        <button type="submit" class="btn" style="margin-top: 2rem;">Concluir Cadastro</button>
+    </form>
+</div>
+{% endblock %}

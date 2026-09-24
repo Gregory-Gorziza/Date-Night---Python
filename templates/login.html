@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Login - DateNight{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+    <h2>Bem-vindo de volta</h2>
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" class="form-control" required placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" class="form-control" required placeholder="Sua senha secreta">
+        </div>
+        <button type="submit" class="btn">Entrar</button>
+    </form>
+    <div class="text-center">
+        <p>Ainda não tem conta? <a href="{{ url_for('register') }}">Cadastre-se</a></p>
+    </div>
+</div>
+{% endblock %}

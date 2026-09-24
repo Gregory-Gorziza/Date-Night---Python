@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Home - DateNight{% endblock %}
+
+{% block content %}
+<div style="width: 100%; max-width: 1200px; margin-bottom: 2rem;">
+    <h2>Seus Melhores Matches, {{ current_user.nome }}</h2>
+</div>
+
+<div class="matches-grid">
+    {% for match in matches %}
+    <div class="match-card">
+        <div class="match-score">{{ match.compatibilidade }}%</div>
+        <div class="match-name">{{ match.nome }}</div>
+        <!-- In a real app, we'd have profile pictures and chat buttons here -->
+    </div>
+    {% else %}
+    <div class="glass-card" style="grid-column: 1 / -1; text-align: center;">
+        <p>Ainda não encontramos matches para você. Tente atualizar seu perfil!</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

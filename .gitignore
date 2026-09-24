@@ -1,0 +1,15 @@
+# Ambiente Virtual
+venv/
+env/
+
+# Configurações sensíveis (NUNCA subir a senha do banco!)
+.env
+
+# Arquivos temporários do Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Logs
+*.log
