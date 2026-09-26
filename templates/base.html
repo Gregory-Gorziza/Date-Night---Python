@@ -11,10 +11,13 @@
         <a href="{{ url_for('index') }}" class="logo">DateNight</a>
         <div class="nav-links">
             {% if session.get('user_id') %}
-                <a href="{{ url_for('home') }}">Matches</a>
+                <a href="{{ url_for('home') }}">Perfis</a>
+                <a href="{{ url_for('encounter') }}">Encontro</a>
                 <a href="{{ url_for('profile') }}">Perfil</a>
                 <a href="{{ url_for('logout') }}">Sair</a>
-            {% else %}
+            {% elif request.endpoint == 'register' %}
+                <a href="{{ url_for('login') }}">Entrar</a>
+            {% elif request.endpoint != 'login' %}
                 <a href="{{ url_for('login') }}">Entrar</a>
                 <a href="{{ url_for('register') }}">Cadastrar</a>
             {% endif %}
@@ -25,12 +28,23 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
+                    {% if category != 'database' %}
                     <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% endwith %}
         
         {% block content %}{% endblock %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                {% if category == 'database' %}
+                    <div class="alert alert-database" role="status">{{ message }}</div>
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
     </div>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

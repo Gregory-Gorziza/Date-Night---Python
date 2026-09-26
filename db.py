@@ -1,17 +1,25 @@
-import psycopg2
-import psycopg2.extras
 import os
+from functools import lru_cache
 from dotenv import load_dotenv
+from supabase import Client, create_client
 
 load_dotenv()
 
-def get_db_connection():
-    """
-    Estabelece e retorna a conexão com o banco de dados PostgreSQL.
-    Utiliza a variável de ambiente 'DATABASE_URL' definida no arquivo .env.
-    O 'RealDictCursor' permite que as linhas retornadas atuem como dicionários.
-    """
-    return psycopg2.connect(
-        os.environ.get("DATABASE_URL"),
-        cursor_factory=psycopg2.extras.RealDictCursor
-    )
+
+class SupabaseConfigurationError(RuntimeError):
+    pass
+
+
+@lru_cache(maxsize=1)
+def get_supabase_client() -> Client:
+    supabase_url = os.environ.get("SUPABASE_URL")
+    secret_key = os.environ.get("SUPABASE_SECRET_KEY")
+    if not supabase_url or not secret_key:
+        raise SupabaseConfigurationError(
+            "Configure SUPABASE_URL e SUPABASE_SECRET_KEY no arquivo .env."
+        )
+    if secret_key.startswith("sb_publishable_"):
+        raise SupabaseConfigurationError(
+            "SUPABASE_SECRET_KEY precisa ser uma chave secreta server-side; sb_publishable não ignora RLS."
+        )
+    return create_client(supabase_url, secret_key)

@@ -1,0 +1,150 @@
+{% set values = form_data %}
+{% set user_photos = existing_photos|default([]) %}
+<div class="profile-form">
+    {% for section, fields in field_groups %}
+    <section class="form-section">
+        <h3>{{ section }}</h3>
+        <div class="field-grid">
+            {% for name, label in fields %}
+            {% set value = values.get(name, profile_defaults.get(name, '')) %}
+            <div class="form-group">
+                <label for="{{ name }}">{{ label }}</label>
+                {% if name in ('nome', 'email') %}
+                <input class="form-control" id="{{ name }}" name="{{ name }}" type="{{ 'email' if name == 'email' else 'text' }}" value="{{ value }}" maxlength="120" required>
+                {% elif name in profile_options %}
+                <select class="form-control" id="{{ name }}" name="{{ name }}" required>
+                    {% for option in profile_options[name] %}
+                    <option value="{{ loop.index0 }}" {% if value|string == loop.index0|string %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+                {% elif name in ('tatuagens', 'fumar') %}
+                <select class="form-control" id="{{ name }}" name="{{ name }}" required>
+                    {% for option_value, option_label in binary_options %}
+                    <option value="{{ option_value }}" {% if value|string == option_value|string %}selected{% endif %}>{{ option_label }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <input class="form-control" id="{{ name }}" name="{{ name }}" type="number" value="{{ value }}" {% if name in ('dia', 'mes', 'ano') %}min="{{ {'dia': 1, 'mes': 1, 'ano': 1900}[name] }}" max="{{ {'dia': 31, 'mes': 12, 'ano': current_year}[name] }}"{% elif name == 'altura' %}min="120" max="230"{% elif name == 'peso' %}min="35" max="250"{% endif %} required>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% if section == 'Informações básicas' %}
+    <section class="form-section">
+        <h3>Acesso</h3>
+        {% if account_mode == 'register' %}
+        <div class="field-grid">
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input class="form-control" id="senha" name="senha" type="password" minlength="6" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmar_senha">Confirme a senha</label>
+                <input class="form-control" id="confirmar_senha" name="confirmar_senha" type="password" minlength="6" autocomplete="new-password" required>
+            </div>
+        </div>
+        {% else %}
+        <p class="form-hint">Deixe em branco para manter a senha atual.</p>
+        <div class="field-grid">
+            <div class="form-group">
+                <label for="nova_senha">Nova senha</label>
+                <input class="form-control" id="nova_senha" name="nova_senha" type="password" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmar_senha">Confirme a nova senha</label>
+                <input class="form-control" id="confirmar_senha" name="confirmar_senha" type="password" minlength="6" autocomplete="new-password">
+            </div>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <section class="form-section">
+        <h3>Interesses</h3>
+        <p class="form-hint">Selecione pelo menos três.</p>
+        <div class="check-grid">
+            {% for name, label in interest_fields %}
+            <label class="check-option">
+                <input type="checkbox" name="{{ name }}" value="1" {% if values.get(name, 0)|string == '1' %}checked{% endif %}>
+                <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="form-section">
+        <h3>Preferências</h3>
+        <div class="field-grid">
+            {% for name, label in preference_options %}
+            {% set value = values.get(name, profile_defaults.get(name, 0)) %}
+            <div class="form-group">
+                <label for="{{ name }}">{{ label }}</label>
+                {% if name in profile_options %}
+                <select class="form-control" id="{{ name }}" name="{{ name }}" required>
+                    {% for option in profile_options[name] %}
+                    <option value="{{ loop.index0 }}" {% if value|string == loop.index0|string %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <select class="form-control" id="{{ name }}" name="{{ name }}" required>
+                    {% for option_value, option_label in binary_options %}
+                    <option value="{{ option_value }}" {% if value|string == option_value|string %}selected{% endif %}>{{ option_label }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="appearance-preferences">
+            <div class="appearance-group">
+                <h4>Cabelos</h4>
+                <div class="check-grid appearance-choice-grid">
+                    {% for name, label in appearance_preferences[:4] %}
+                    <label class="check-option">
+                        <input type="checkbox" name="{{ name }}" value="1" {% if values.get(name, 0)|string == '1' %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="appearance-group">
+                <h4>Tom de pele</h4>
+                <div class="check-grid appearance-choice-grid">
+                    {% for name, label in appearance_preferences[4:] %}
+                    <label class="check-option">
+                        <input type="checkbox" name="{{ name }}" value="1" {% if values.get(name, 0)|string == '1' %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <h3>Fotos</h3>
+        {% if account_mode == 'edit' and user_photos %}
+        <div class="photo-gallery photo-gallery--manage">
+            {% for photo in user_photos %}
+            <label class="photo-manage-item">
+                <img src="{{ url_for('uploaded_photo', filename=photo) }}" alt="Foto do perfil">
+                <span class="check-option">
+                    <input type="checkbox" name="remover_fotos" value="{{ photo }}">
+                    <span>Remover foto</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <label class="upload-control" for="fotos">
+            <span class="upload-symbol" aria-hidden="true">+</span>
+            <span>Adicionar fotos</span>
+            <input id="fotos" name="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple data-photo-upload data-existing-count="{{ user_photos|length if account_mode == 'edit' else 0 }}">
+        </label>
+        <p class="form-hint">Até cinco fotos no total; JPG, PNG ou WebP, até 5 MB cada.</p>
+        <p class="form-hint" data-photo-message aria-live="polite"></p>
+        <div class="photo-gallery photo-gallery--preview" data-photo-preview aria-live="polite"></div>
+    </section>
+</div>

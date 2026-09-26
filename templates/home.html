@@ -1,23 +1,43 @@
 {% extends "base.html" %}
 
-{% block title %}Home - DateNight{% endblock %}
+{% block title %}Perfis - DateNight{% endblock %}
 
 {% block content %}
-<div style="width: 100%; max-width: 1200px; margin-bottom: 2rem;">
-    <h2>Seus Melhores Matches, {{ current_user.nome }}</h2>
-</div>
+<main class="discovery-page">
+    <header class="discovery-heading matches-heading">
+        <div>
+            <p class="eyebrow">Date Night</p>
+            <h1>Olá, {{ current_user.nome if current_user else '' }}</h1>
+        </div>
+        <a class="btn btn-love encounter-link" href="{{ url_for('encounter') }}">Ir para encontro</a>
+    </header>
 
-<div class="matches-grid">
-    {% for match in matches %}
-    <div class="match-card">
-        <div class="match-score">{{ match.compatibilidade }}%</div>
-        <div class="match-name">{{ match.nome }}</div>
-        <!-- In a real app, we'd have profile pictures and chat buttons here -->
-    </div>
+    {% if candidates %}
+    <section class="matches-grid" aria-label="Outros perfis">
+        {% for profile in candidates %}
+        <article class="match-card profile-list-card">
+            <a class="profile-list-link" href="{{ url_for('encounter', position=loop.index0) }}">
+                {% if profile.fotos %}
+                <img class="profile-list-photo" src="{{ url_for('uploaded_photo', filename=profile.fotos[0]) }}" alt="Foto de {{ profile.nome }}" loading="lazy">
+                {% else %}
+                <div class="profile-list-placeholder" aria-hidden="true">{{ profile.nome[:1]|upper }}</div>
+                {% endif %}
+                <div class="profile-list-meta">
+                    <div>
+                        <h2 class="match-name">{{ profile.nome }}</h2>
+                        <p class="match-score-small">{{ profile.compatibilidade }} pontos de afinidade</p>
+                    </div>
+                    {% if profile['match'] %}<span class="match-status">Match</span>{% endif %}
+                </div>
+            </a>
+        </article>
+        {% endfor %}
+    </section>
     {% else %}
-    <div class="glass-card" style="grid-column: 1 / -1; text-align: center;">
-        <p>Ainda não encontramos matches para você. Tente atualizar seu perfil!</p>
-    </div>
-    {% endfor %}
-</div>
+    <section class="empty-state">
+        <h2>Nenhum perfil disponível</h2>
+        <p>Quando houver perfis compatíveis, eles aparecerão aqui.</p>
+    </section>
+    {% endif %}
+</main>
 {% endblock %}

@@ -3,21 +3,22 @@
 {% block title %}Meu Perfil - DateNight{% endblock %}
 
 {% block content %}
-<div class="glass-card">
-    <h2>Meu Perfil</h2>
-    <form method="POST" action="{{ url_for('profile') }}">
-        <div class="form-group">
-            <label for="nome">Nome</label>
-            <input type="text" id="nome" name="nome" class="form-control" value="{{ user.nome }}" required>
-        </div>
-        <div class="form-group">
-            <label for="email">E-mail (somente leitura)</label>
-            <input type="email" id="email" class="form-control" value="{{ user.email }}" disabled>
-        </div>
-        
-        <!-- Outros campos podem ser adicionados aqui -->
-        
-        <button type="submit" class="btn">Atualizar Perfil</button>
+<main class="form-page">
+    <header class="page-heading">
+        <p class="eyebrow">Conta</p>
+        <h1>Meu perfil</h1>
+    </header>
+    <form class="glass-card profile-card" method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+        {% set account_mode = 'edit' %}
+        {% include '_profile_fields.html' %}
+        <button class="btn" type="submit">Salvar perfil</button>
     </form>
-</div>
+    <form class="delete-form" method="POST" action="{{ url_for('delete_profile') }}" onsubmit="return confirm('Excluir sua conta e seus dados?');">
+        <button class="btn btn-danger" type="submit">Excluir conta</button>
+    </form>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/photo-upload.js') }}" defer></script>
 {% endblock %}

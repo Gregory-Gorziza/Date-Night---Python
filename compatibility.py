@@ -1,85 +1,84 @@
 import datetime
-from db import get_db_connection
+from db import get_supabase_client
 
 class Compatibilidade:
-    """
-    Classe responsável por calcular o nível de compatibilidade (afinidade) 
-    entre os usuários do sistema com base em diversas características 
-    (idade, altura, gostos, interesses, etc.).
-    """
+    """Compatibilidade entre usuários."""
     def __init__(self):
         self.compatibilidade = 0
 
     def calculate_compatibility(self, current_user_id):
-        """
-        Função principal que calcula a compatibilidade do usuário atual com todos os 
-        outros usuários cadastrados no banco de dados. 
-        O resultado é salvo na tabela 'ficha' para exibir os melhores 'matches'.
-        """
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM user WHERE id = %s", (current_user_id,))
-                user = cursor.fetchone()
-                if not user:
-                    return
-                
-                cursor.execute("SELECT * FROM user WHERE id != %s", (current_user_id,))
-                other_users = cursor.fetchall()
-                
-                for comp_user in other_users:
-                    if not self._check_gender(user, comp_user):
-                        # Should delete from ficha if exists?
-                        self._delete_ficha(current_user_id, comp_user['id'], cursor)
-                        continue
-                    
-                    self.compatibilidade = 0
-                    
-                    self._idade(user, comp_user)
-                    self._altura(user, comp_user)
-                    self._imc(user, comp_user)
-                    self._forma_fisica(user, comp_user)
-                    self._cabelo(user, comp_user)
-                    self._pele(user, comp_user)
-                    self._tatuagens(user, comp_user)
-                    self._certifica_salario(user, comp_user)
-                    self._tracos(user, comp_user)
-                    self._interesses(user, comp_user)
-                    
-                    self._salva_ficha(current_user_id, comp_user['id'], self.compatibilidade, cursor)
-            conn.commit()
+        """Calcula e salva combinações."""
+        client = get_supabase_client()
+        user_rows = (
+            client.table("user")
+            .select("*")
+            .eq("id", current_user_id)
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not user_rows:
+            return
+        user = user_rows[0]
+        other_users = (
+            client.table("user")
+            .select("*")
+            .neq("id", current_user_id)
+            .execute()
+            .data
+            or []
+        )
+
+        for comp_user in other_users:
+            if not self._check_gender(user, comp_user):
+                self._delete_ficha(client, current_user_id, comp_user["id"])
+                continue
+
+            score_a = self._score(user, comp_user)
+            score_b = self._score(comp_user, user)
+            score = (score_a + score_b) // 2
+            self._salva_ficha(client, current_user_id, comp_user["id"], score)
 
     def _check_gender(self, user, comp):
-        """
-        Verifica se a preferência de gênero de ambos os usuários coincide.
-        Retorna True se ambos corresponderem à preferência um do outro.
-        """
+        """Confere as preferências de gênero."""
         return user['pref_genero'] == comp['genero'] and comp['pref_genero'] == user['genero']
 
-    def _delete_ficha(self, user_id_a, user_id_b, cursor):
-        sql = "DELETE FROM ficha WHERE (id_user_A = %s AND id_user_B = %s) OR (id_user_A = %s AND id_user_B = %s)"
-        cursor.execute(sql, (user_id_a, user_id_b, user_id_b, user_id_a))
+    def _delete_ficha(self, client, user_id_a, user_id_b):
+        user_id_a, user_id_b = sorted((user_id_a, user_id_b))
+        client.table("ficha").delete().eq("id_user_a", user_id_a).eq(
+            "id_user_b", user_id_b
+        ).execute()
+        client.table("ficha").delete().eq("id_user_a", user_id_b).eq(
+            "id_user_b", user_id_a
+        ).execute()
 
-    def _salva_ficha(self, user_id_a, user_id_b, compatibilidade, cursor):
-        # We need to ensure A < B to respect unique constraint
-        if user_id_a > user_id_b:
-            user_id_a, user_id_b = user_id_b, user_id_a
-            
-        sql_check = "SELECT id FROM ficha WHERE id_user_A = %s AND id_user_B = %s"
-        cursor.execute(sql_check, (user_id_a, user_id_b))
-        ficha = cursor.fetchone()
-        
-        if ficha:
-            sql_update = "UPDATE ficha SET compatibilidade = %s WHERE id = %s"
-            cursor.execute(sql_update, (compatibilidade, ficha['id']))
-        else:
-            sql_insert = "INSERT INTO ficha (id_user_A, id_user_B, compatibilidade, gostei_A, amei_A, gostei_B, amei_B, `match`) VALUES (%s, %s, %s, 0, 0, 0, 0, 0)"
-            cursor.execute(sql_insert, (user_id_a, user_id_b, compatibilidade))
+    def _salva_ficha(self, client, user_id_a, user_id_b, compatibilidade):
+        user_id_a, user_id_b = sorted((user_id_a, user_id_b))
+        client.table("ficha").upsert(
+            {
+                "id_user_a": user_id_a,
+                "id_user_b": user_id_b,
+                "compatibilidade": compatibilidade,
+            },
+            on_conflict="id_user_a,id_user_b",
+        ).execute()
+
+    def _score(self, user, comp):
+        self.compatibilidade = 0
+        self._idade(user, comp)
+        self._altura(user, comp)
+        self._imc(user, comp)
+        self._forma_fisica(user, comp)
+        self._cabelo(user, comp)
+        self._pele(user, comp)
+        self._tatuagens(user, comp)
+        self._certifica_salario(user, comp)
+        self._tracos(user, comp)
+        self._interesses(user, comp)
+        return self.compatibilidade
 
     def _idade(self, user, comp):
-        """
-        Calcula os pontos de compatibilidade baseados na regra de idade:
-        Metade da idade mais sete (no código ajustado para +6).
-        """
+        """Pontua a diferença de idade."""
         current_year = datetime.datetime.now().year
         idade_user = current_year - user['ano']
         idade_comp = current_year - comp['ano']
@@ -191,10 +190,7 @@ class Compatibilidade:
             if comp['tracos'] >= 2: self.compatibilidade += 1
 
     def _interesses(self, user, comp):
-        """
-        Calcula os pontos de compatibilidade baseados nos interesses em comum
-        (viagens, livros, animais, esportes, etc).
-        """
+        """Pontua interesses em comum."""
         fields = ['viagens', 'livros', 'causa', 'animais', 'jogos', 'artes', 'natureza', 'esportes', 'gastronomia', 'musica']
         for field in fields:
             if comp.get(field, 0) == user.get(field, 0):

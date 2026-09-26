@@ -1,17 +1,30 @@
 @echo off
 echo Iniciando o Date Night...
 
-:: Verifica se a pasta venv existe
-if not exist "venv\" (
-    echo A pasta do ambiente virtual (venv) nao foi encontrada!
-    pause
-    exit /b
+if not exist "venv\Scripts\python.exe" (
+    echo Criando ambiente virtual...
+    python -m venv venv
+    if errorlevel 1 (
+        echo Nao foi possivel criar o ambiente virtual.
+        pause
+        exit /b 1
+    )
 )
 
-:: Ativa o ambiente virtual
 call venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+if errorlevel 1 (
+    echo Nao foi possivel instalar as dependencias.
+    pause
+    exit /b 1
+)
 
-:: Inicia o servidor Flask
+if not exist ".env" (
+    echo Configure o arquivo .env usando .env.example como modelo.
+    pause
+    exit /b 1
+)
+
 echo Iniciando o servidor web na porta 5000...
 python app.py
 

@@ -1,6 +1,8 @@
 # Ambiente Virtual
 venv/
 env/
+instance/uploads/
+teste/
 
 # Configurações sensíveis (NUNCA subir a senha do banco!)
 .env

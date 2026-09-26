@@ -145,6 +145,7 @@ h1, h2 {
 
 .alert-success { background: rgba(46, 213, 115, 0.2); color: #2ed573; border: 1px solid rgba(46, 213, 115, 0.3); }
 .alert-danger { background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid rgba(255, 71, 87, 0.3); }
+.alert-database { background: rgba(255, 183, 77, 0.14); color: #f2c078; border: 1px solid rgba(255, 183, 77, 0.35); }
 
 /* Matches Grid */
 .matches-grid {
@@ -162,6 +163,60 @@ h1, h2 {
     padding: 2rem;
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.matches-heading {
+    align-items: center;
+}
+
+.encounter-link {
+    width: auto;
+    white-space: nowrap;
+}
+
+.profile-list-card {
+    overflow: hidden;
+    padding: 0;
+    text-align: left;
+}
+
+.profile-list-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.profile-list-photo,
+.profile-list-placeholder {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: #292930;
+}
+
+.profile-list-placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--text-secondary);
+    font-size: 3rem;
+}
+
+.profile-list-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.profile-list-meta .match-name {
+    margin: 0;
+}
+
+.match-score-small {
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
 }
 
 .match-card:hover {
@@ -190,4 +245,425 @@ h1, h2 {
 .text-center a {
     color: var(--primary);
     text-decoration: none;
+}
+
+.container {
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.login-page {
+    display: grid;
+    flex: 1;
+    width: 100%;
+    place-items: center;
+}
+
+.login-page > .glass-card {
+    width: min(100%, 500px);
+}
+
+.test-batch-form {
+    margin-top: 1rem;
+}
+
+.form-page,
+.discovery-page {
+    width: min(100%, 1080px);
+    margin: 0 auto;
+}
+
+.page-heading,
+.discovery-heading,
+.candidate-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.page-heading {
+    display: block;
+    margin: 0 auto 1.5rem;
+    max-width: 900px;
+}
+
+.page-heading h1,
+.discovery-heading h1,
+.candidate-header h2 {
+    margin: 0;
+    text-align: left;
+}
+
+.eyebrow {
+    margin-bottom: 0.35rem;
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.profile-card {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    border-radius: 12px;
+}
+
+.form-section {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--glass-border);
+}
+
+.form-section h3,
+.form-section h4 {
+    margin-bottom: 1rem;
+}
+
+.field-grid,
+.check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 1rem;
+}
+
+.form-group {
+    min-width: 0;
+}
+
+.form-control {
+    min-height: 48px;
+    border-radius: 8px;
+}
+
+select.form-control option {
+    color: #17171b;
+    background: #fff;
+}
+
+.form-hint,
+.keyboard-hint {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.check-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.5rem;
+}
+
+.check-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 44px;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.check-option input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.appearance-preferences {
+    margin-top: 1.25rem;
+}
+
+.appearance-group + .appearance-group {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+}
+
+.appearance-group h4 {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.appearance-choice-grid .check-option {
+    background: rgba(160, 160, 170, 0.12);
+    border-color: rgba(190, 190, 200, 0.24);
+}
+
+.appearance-choice-grid .check-option:focus-within {
+    border-color: #a0a0aa;
+}
+
+.appearance-choice-grid .check-option input {
+    accent-color: #a0a0aa;
+}
+
+.profile-card > .btn-complete {
+    display: block;
+    width: min(100%, 480px);
+    min-height: 68px;
+    margin: 1.5rem auto 0;
+    font-size: 1.2rem;
+}
+
+.delete-form {
+    max-width: 900px;
+    margin: 1rem auto 0;
+    text-align: right;
+}
+
+.delete-form .btn {
+    width: auto;
+}
+
+.btn-secondary {
+    width: auto;
+    background: #303039;
+    text-align: center;
+    text-decoration: none;
+}
+
+.btn-like {
+    background: #087f8c;
+}
+
+.btn-love {
+    background: #bd3d57;
+}
+
+.btn-danger {
+    background: #8f293a;
+}
+
+.discovery-heading {
+    align-items: center;
+    width: min(100%, 900px);
+    margin: 0 auto 1rem;
+}
+
+.position-count {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.candidate-panel,
+.empty-state {
+    width: min(100%, 900px);
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: var(--glass-bg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: fadeUp 0.35s ease-out both;
+}
+
+.candidate-header {
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.candidate-header h2 {
+    font-size: 2rem;
+}
+
+.match-status {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(46, 213, 115, 0.16);
+    color: #62e59a;
+    font-weight: 700;
+}
+
+.profile-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--glass-border);
+}
+
+.profile-fact {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+    gap: 0.75rem;
+    padding: 0.8rem 0.5rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.profile-fact dt {
+    color: var(--text-secondary);
+}
+
+.profile-fact dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.candidate-actions,
+.candidate-actions form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+}
+
+.candidate-actions {
+    margin-top: 1.5rem;
+}
+
+.candidate-actions .btn {
+    min-width: 96px;
+    padding: 0.8rem 1rem;
+}
+
+.keyboard-hint {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.empty-state {
+    text-align: center;
+}
+
+.empty-state h2 {
+    margin-bottom: 0.75rem;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid #f3c969;
+    outline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+    .navbar {
+        padding: 1rem 5%;
+    }
+
+    .nav-links a {
+        margin-left: 0.75rem;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .field-grid,
+    .profile-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .candidate-header {
+        align-items: flex-start;
+    }
+
+    .candidate-header h2 {
+        font-size: 1.6rem;
+    }
+
+    .candidate-actions,
+    .candidate-actions form {
+        flex-wrap: wrap;
+    }
+
+    .candidate-actions form {
+        order: -1;
+        width: 100%;
+    }
+
+    .candidate-actions form .btn {
+        flex: 1;
+    }
+
+    .profile-fact {
+        grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr);
+    }
+}
+
+.upload-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: fit-content;
+    min-width: 210px;
+    min-height: 54px;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--primary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.upload-control:hover {
+    background: rgba(255, 75, 114, 0.08);
+}
+
+.upload-symbol {
+    color: var(--primary);
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.upload-control input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.photo-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.photo-gallery:empty {
+    display: none;
+}
+
+.photo-gallery img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    object-fit: cover;
+}
+
+.photo-manage-item {
+    min-width: 0;
+}
+
+.photo-manage-item .check-option {
+    margin-top: 0.35rem;
+}
+
+.photo-gallery--preview figure {
+    min-width: 0;
+    margin: 0;
+}
+
+.photo-gallery--preview figcaption {
+    overflow: hidden;
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.photo-gallery--candidate {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    margin: 0 0 1.5rem;
+}
+
+.photo-gallery--candidate img {
+    max-height: 320px;
 }
