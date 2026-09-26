@@ -1,43 +1,151 @@
 {% extends "base.html" %}
 
-{% block title %}Perfis - DateNight{% endblock %}
+{% block title %}Home - DateNight{% endblock %}
 
 {% block content %}
-<main class="discovery-page">
-    <header class="discovery-heading matches-heading">
-        <div>
-            <p class="eyebrow">Date Night</p>
-            <h1>Olá, {{ current_user.nome if current_user else '' }}</h1>
-        </div>
-        <a class="btn btn-love encounter-link" href="{{ url_for('encounter') }}">Ir para encontro</a>
-    </header>
+<button type="button" id="secretInfoBtn" class="secret-info-btn">
+<span class="secret-icon">✧</span>
+</button>
 
-    {% if candidates %}
-    <section class="matches-grid" aria-label="Outros perfis">
-        {% for profile in candidates %}
-        <article class="match-card profile-list-card">
-            <a class="profile-list-link" href="{{ url_for('encounter', position=loop.index0) }}">
-                {% if profile.fotos %}
-                <img class="profile-list-photo" src="{{ url_for('uploaded_photo', filename=profile.fotos[0]) }}" alt="Foto de {{ profile.nome }}" loading="lazy">
-                {% else %}
-                <div class="profile-list-placeholder" aria-hidden="true">{{ profile.nome[:1]|upper }}</div>
-                {% endif %}
-                <div class="profile-list-meta">
-                    <div>
-                        <h2 class="match-name">{{ profile.nome }}</h2>
-                        <p class="match-score-small">{{ profile.compatibilidade }} pontos de afinidade</p>
-                    </div>
-                    {% if profile['match'] %}<span class="match-status">Match</span>{% endif %}
-                </div>
-            </a>
-        </article>
-        {% endfor %}
-    </section>
-    {% else %}
-    <section class="empty-state">
-        <h2>Nenhum perfil disponível</h2>
-        <p>Quando houver perfis compatíveis, eles aparecerão aqui.</p>
-    </section>
-    {% endif %}
-</main>
+<div class="home-tiktok-wrapper">
+<div class="tiktok-container" id="tiktokContainer">
+{% if candidates %}
+{% for candidate in candidates %}
+<div class="tiktok-slide" data-index="{{ loop.index0 }}">
+<div class="slide-stage">
+<button form="form-match-{{ candidate.ficha_id }}" class="side-btn btn-like" type="submit" name="action" value="like">Gostei</button>
+
+<div class="photo-frame">
+{% if candidate.fotos %}
+<img class="tiktok-photo" src="{{ url_for('uploaded_photo', filename=candidate.fotos[0]) }}" alt="Foto">
+{% else %}
+<div class="tiktok-photo-placeholder">Sem Foto</div>
+{% endif %}
+</div>
+
+<button form="form-match-{{ candidate.ficha_id }}" class="side-btn btn-love" type="submit" name="action" value="love">Amei</button>
+
+<form id="form-match-{{ candidate.ficha_id }}" method="POST" action="{{ url_for('match_action', ficha_id=candidate.ficha_id) }}">
+<input type="hidden" name="position" value="{{ loop.index0 }}">
+</form>
+
+<template class="profile-info-template">
+<div class="drawer-profile">
+<div class="drawer-header-info">
+<h2 class="drawer-name">{{ candidate.nome }}</h2>
+<div class="drawer-compat">{{ candidate.compatibilidade }} pontos</div>
+</div>
+<div class="drawer-details-grid">
+{% for label, val in candidate.summary %}
+{% if val and val != "Indiferente" and val != "Não" %}
+<div class="drawer-detail-item">
+<span class="detail-label">{{ label }}</span>
+<span class="detail-value">{{ val }}</span>
+</div>
+{% elif val %}
+<div class="drawer-detail-item muted">
+<span class="detail-label">{{ label }}</span>
+<span class="detail-value">{{ val }}</span>
+</div>
+{% endif %}
+{% endfor %}
+</div>
+</div>
+</template>
+</div>
+</div>
+{% endfor %}
+{% else %}
+<div class="tiktok-slide empty">
+<h2>Nenhum perfil disponível no momento</h2>
+</div>
+{% endif %}
+</div>
+</div>
+
+<div id="profileDrawer" class="profile-drawer">
+<div class="drawer-top-bar">
+<h3>Detalhes do Perfil</h3>
+<button type="button" id="closeDrawerBtn" class="drawer-close">&times;</button>
+</div>
+<div id="drawerBody" class="drawer-body"></div>
+</div>
+<div id="drawerOverlay" class="drawer-backdrop"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var container = document.getElementById('tiktokContainer');
+    var secretBtn = document.getElementById('secretInfoBtn');
+    var drawer = document.getElementById('profileDrawer');
+    var overlay = document.getElementById('drawerOverlay');
+    var closeBtn = document.getElementById('closeDrawerBtn');
+    var drawerBody = document.getElementById('drawerBody');
+    var slides = [];
+    var allSlides = document.querySelectorAll('.tiktok-slide');
+    for (var i = 0; i < allSlides.length; i++) {
+        if (!allSlides[i].classList.contains('empty')) {
+            slides.push(allSlides[i]);
+        }
+    }
+
+    function getCurrentSlide() {
+        if (!container || slides.length == 0) return null;
+        var containerRect = container.getBoundingClientRect();
+        var containerCenter = containerRect.top + containerRect.height / 2;
+        var closestSlide = null;
+        var minDistance = 999999;
+
+        for (var i = 0; i < slides.length; i++) {
+            var rect = slides[i].getBoundingClientRect();
+            var slideCenter = rect.top + rect.height / 2;
+            var distance = Math.abs(containerCenter - slideCenter);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestSlide = slides[i];
+            }
+        }
+        return closestSlide;
+    }
+
+    function updateDrawerContent() {
+        var currentSlide = getCurrentSlide();
+        if (!currentSlide) return;
+        var tmpl = currentSlide.querySelector('.profile-info-template');
+        if (tmpl) {
+            drawerBody.innerHTML = tmpl.innerHTML;
+        } else {
+            drawerBody.innerHTML = '<p>Sem detalhes.</p>';
+        }
+    }
+
+    function openDrawer() {
+        updateDrawerContent();
+        drawer.classList.add('active');
+        overlay.classList.add('active');
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove('active');
+        overlay.classList.remove('active');
+    }
+
+    secretBtn.onclick = openDrawer;
+    closeBtn.onclick = closeDrawer;
+    overlay.onclick = closeDrawer;
+
+    document.onkeydown = function (e) {
+        if (e.key == 'Escape') closeDrawer();
+    };
+
+    var scrollTimeout;
+    container.onscroll = function () {
+        if (drawer.classList.contains('active')) {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(updateDrawerContent, 100);
+        }
+    };
+});
+</script>
 {% endblock %}

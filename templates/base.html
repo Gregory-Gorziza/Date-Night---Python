@@ -1,50 +1,55 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}DateNight{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}DateNight{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav class="navbar">
-        <a href="{{ url_for('index') }}" class="logo">DateNight</a>
-        <div class="nav-links">
-            {% if session.get('user_id') %}
-                <a href="{{ url_for('home') }}">Perfis</a>
-                <a href="{{ url_for('encounter') }}">Encontro</a>
-                <a href="{{ url_for('profile') }}">Perfil</a>
-                <a href="{{ url_for('logout') }}">Sair</a>
-            {% elif request.endpoint == 'register' %}
-                <a href="{{ url_for('login') }}">Entrar</a>
-            {% elif request.endpoint != 'login' %}
-                <a href="{{ url_for('login') }}">Entrar</a>
-                <a href="{{ url_for('register') }}">Cadastrar</a>
-            {% endif %}
-        </div>
-    </nav>
+<div class="navbar">
+<a href="{{ url_for('index') }}" class="logo">DateNight</a>
+<div class="nav-links">
+{% if session.get('user_id') %}
+{% if request.endpoint == 'home' %}
+<a href="{{ url_for('profile') }}">Perfil</a>
+{% elif request.endpoint == 'profile' %}
+<a href="{{ url_for('home') }}">Home</a>
+{% else %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('profile') }}">Perfil</a>
+{% endif %}
+<a href="{{ url_for('logout') }}">Sair</a>
+{% elif request.endpoint == 'register' %}
+<a href="{{ url_for('login') }}">Entrar</a>
+{% elif request.endpoint != 'login' %}
+<a href="{{ url_for('login') }}">Entrar</a>
+<a href="{{ url_for('register') }}">Cadastrar</a>
+{% endif %}
+</div>
+</div>
 
-    <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    {% if category != 'database' %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        {% block content %}{% endblock %}
+<div class="container">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+{% if category != 'database' %}
+<div class="alert alert-{{ category }}">{{ message }}</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endwith %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                {% if category == 'database' %}
-                    <div class="alert alert-database" role="status">{{ message }}</div>
-                {% endif %}
-            {% endfor %}
-        {% endwith %}
-    </div>
-    {% block scripts %}{% endblock %}
+{% block content %}{% endblock %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+{% if category == 'database' %}
+<div class="alert alert-database">{{ message }}</div>
+{% endif %}
+{% endfor %}
+{% endwith %}
+</div>
+{% block scripts %}{% endblock %}
 </body>
 </html>

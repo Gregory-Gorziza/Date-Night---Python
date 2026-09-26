@@ -2,32 +2,16 @@ import datetime
 from db import get_supabase_client
 
 class Compatibilidade:
-    """Compatibilidade entre usuários."""
     def __init__(self):
         self.compatibilidade = 0
 
     def calculate_compatibility(self, current_user_id):
-        """Calcula e salva combinações."""
         client = get_supabase_client()
-        user_rows = (
-            client.table("user")
-            .select("*")
-            .eq("id", current_user_id)
-            .limit(1)
-            .execute()
-            .data
-        )
+        user_rows = client.table("user").select("*").eq("id", current_user_id).limit(1).execute().data
         if not user_rows:
             return
         user = user_rows[0]
-        other_users = (
-            client.table("user")
-            .select("*")
-            .neq("id", current_user_id)
-            .execute()
-            .data
-            or []
-        )
+        other_users = client.table("user").select("*").neq("id", current_user_id).execute().data or []
 
         for comp_user in other_users:
             if not self._check_gender(user, comp_user):
@@ -40,8 +24,9 @@ class Compatibilidade:
             self._salva_ficha(client, current_user_id, comp_user["id"], score)
 
     def _check_gender(self, user, comp):
-        """Confere as preferências de gênero."""
-        return user['pref_genero'] == comp['genero'] and comp['pref_genero'] == user['genero']
+        if user['pref_genero'] == comp['genero'] and comp['pref_genero'] == user['genero']:
+            return True
+        return False
 
     def _delete_ficha(self, client, user_id_a, user_id_b):
         user_id_a, user_id_b = sorted((user_id_a, user_id_b))
@@ -54,14 +39,11 @@ class Compatibilidade:
 
     def _salva_ficha(self, client, user_id_a, user_id_b, compatibilidade):
         user_id_a, user_id_b = sorted((user_id_a, user_id_b))
-        client.table("ficha").upsert(
-            {
-                "id_user_a": user_id_a,
-                "id_user_b": user_id_b,
-                "compatibilidade": compatibilidade,
-            },
-            on_conflict="id_user_a,id_user_b",
-        ).execute()
+        dados = {}
+        dados["id_user_a"] = user_id_a
+        dados["id_user_b"] = user_id_b
+        dados["compatibilidade"] = compatibilidade
+        client.table("ficha").upsert(dados, on_conflict="id_user_a,id_user_b").execute()
 
     def _score(self, user, comp):
         self.compatibilidade = 0
@@ -78,7 +60,6 @@ class Compatibilidade:
         return self.compatibilidade
 
     def _idade(self, user, comp):
-        """Pontua a diferença de idade."""
         current_year = datetime.datetime.now().year
         idade_user = current_year - user['ano']
         idade_comp = current_year - comp['ano']
@@ -190,7 +171,6 @@ class Compatibilidade:
             if comp['tracos'] >= 2: self.compatibilidade += 1
 
     def _interesses(self, user, comp):
-        """Pontua interesses em comum."""
         fields = ['viagens', 'livros', 'causa', 'animais', 'jogos', 'artes', 'natureza', 'esportes', 'gastronomia', 'musica']
         for field in fields:
             if comp.get(field, 0) == user.get(field, 0):

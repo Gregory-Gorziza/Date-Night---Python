@@ -3,20 +3,20 @@
 {% block title %}Meu Perfil - DateNight{% endblock %}
 
 {% block content %}
-<main class="form-page">
-    <header class="page-heading">
-        <p class="eyebrow">Conta</p>
-        <h1>Meu perfil</h1>
-    </header>
-    <form class="glass-card profile-card" method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
-        {% set account_mode = 'edit' %}
-        {% include '_profile_fields.html' %}
-        <button class="btn" type="submit">Salvar perfil</button>
-    </form>
-    <form class="delete-form" method="POST" action="{{ url_for('delete_profile') }}" onsubmit="return confirm('Excluir sua conta e seus dados?');">
-        <button class="btn btn-danger" type="submit">Excluir conta</button>
-    </form>
-</main>
+<div class="form-page">
+<div class="page-heading">
+<p class="eyebrow">Conta</p>
+<h1>Meu perfil</h1>
+</div>
+<form class="glass-card profile-card" method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+{% set account_mode = 'edit' %}
+{% include '_profile_fields.html' %}
+<button class="btn" type="submit">Salvar perfil</button>
+</form>
+<form class="delete-form" method="POST" action="{{ url_for('delete_profile') }}" onsubmit="return confirm('Excluir sua conta e seus dados?');">
+<button class="btn btn-danger" type="submit">Excluir conta</button>
+</form>
+</div>
 {% endblock %}
 
 {% block scripts %}

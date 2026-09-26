@@ -3,29 +3,32 @@
 {% block title %}Login - DateNight{% endblock %}
 
 {% block content %}
-<main class="login-page">
-    <div class="glass-card">
-        <h2>Bem-vindo de volta</h2>
-        <form method="POST" action="{{ url_for('login') }}">
-            <div class="form-group">
-                <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" class="form-control" required placeholder="seu@email.com">
-            </div>
-            <div class="form-group">
-                <label for="senha">Senha</label>
-                <input type="password" id="senha" name="senha" class="form-control" required placeholder="Sua senha secreta">
-            </div>
-            <button type="submit" class="btn">Entrar</button>
-        </form>
-        <div class="text-center">
-            <p>Ainda não tem conta? <a href="{{ url_for('register') }}">Cadastre-se</a></p>
-        </div>
-        {% if test_profiles_available %}
-        <form class="test-batch-form" method="POST" action="{{ url_for('generate_test_profiles') }}" onsubmit="return confirm('Gerar 100 perfis de teste com a foto da pasta teste? Perfis de teste anteriores serão substituídos.');">
-            <input type="hidden" name="csrf_token" value="{{ test_profiles_csrf_token }}">
-            <button class="btn btn-secondary" type="submit">Gerar 100 perfis de teste</button>
-        </form>
-        {% endif %}
-    </div>
-</main>
+<div class="login-page">
+<div class="glass-card">
+<h2>Bem-vindo de volta</h2>
+<form method="POST" action="{{ url_for('login') }}">
+<div class="form-group">
+<label for="email">E-mail</label>
+<input type="email" id="email" name="email" class="form-control" required placeholder="seu@email.com">
+</div>
+<div class="form-group">
+<label for="senha">Senha</label>
+<input type="password" id="senha" name="senha" class="form-control" required placeholder="Sua senha secreta">
+</div>
+<button type="submit" class="btn">Entrar</button>
+</form>
+<div class="text-center">
+<p>Ainda não tem conta? <a href="{{ url_for('register') }}">Cadastre-se</a></p>
+</div>
+{% if test_profiles_available %}
+<form class="test-batch-form" method="POST" action="{{ url_for('generate_test_profiles') }}"
+onsubmit="return confirm('Gerar 100 perfis de teste com a foto da pasta teste? Perfis de teste anteriores serão substituídos.');"
+style="position: fixed; bottom: 5px; right: 5px; margin: 0; z-index: 9999;">
+<input type="hidden" name="csrf_token" value="{{ test_profiles_csrf_token }}">
+<button type="submit"
+style="background: transparent; border: none; color: inherit; opacity: 0.1; cursor: pointer; padding: 5px; font-size: 14px; outline: none; box-shadow: none;">t</button>
+</form>
+{% endif %}
+</div>
+</div>
 {% endblock %}

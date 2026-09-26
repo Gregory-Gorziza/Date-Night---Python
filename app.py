@@ -40,16 +40,7 @@ TEST_PROFILE_EMAIL_PATTERN = "date-night-test-%@example.test"
 
 
 def _supabase_error_message(error, action):
-    code = getattr(error, "code", None)
-    if code == "42501":
-        return f"O Supabase negou acesso ao tentar {action} (RLS/permissão)."
-    if code in {"PGRST205", "PGRST204", "42P01", "42703"}:
-        return f"Tabela ou coluna ausente ao tentar {action}. Execute schema_postgresql.sql."
-    if isinstance(error, httpx.HTTPError):
-        return f"Falha de rede ao tentar {action}. Confira SUPABASE_URL e a conexão."
-    if isinstance(error, SupabaseConfigurationError):
-        return str(error)
-    return f"Falha ao tentar {action} no Supabase (código {code or 'API'}); confira o log do Flask."
+    return 'Erro no banco de dados.'
 
 
 def _is_local_request():
@@ -95,41 +86,27 @@ def _test_profiles_csrf_token():
 
 @app.route('/')
 def index():
-    """Início: redirecionamento."""
     if 'user_id' in session:
         return redirect(url_for('home'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login: entrada."""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         senha = request.form.get('senha', '')
         try:
-            users = (
-                get_supabase_client()
-                .table("user")
-                .select("id,senha")
-                .eq("email", email)
-                .limit(1)
-                .execute()
-                .data
-            )
+            users = get_supabase_client().table("user").select("id,senha").eq("email", email).limit(1).execute().data
             user = users[0] if users else None
             if user and _verify_password(user['senha'], senha):
                 if not _is_password_hash(user['senha']):
-                    get_supabase_client().table("user").update(
-                        {"senha": generate_password_hash(senha)}
-                    ).eq("id", user['id']).execute()
+                    get_supabase_client().table("user").update({"senha": generate_password_hash(senha)}).eq("id", user['id']).execute()
                 session.clear()
                 session['user_id'] = user['id']
                 return redirect(url_for('home'))
-        except SUPABASE_ERRORS:
-            app.logger.exception('Falha ao consultar login no Supabase')
-            flash('Não foi possível acessar o banco de dados.', 'danger')
+        except:
+            flash('Erro no banco de dados.', 'danger')
             return render_template('login.html')
-
         flash('E-mail ou senha incorretos.', 'danger')
     return render_template('login.html')
 
@@ -145,128 +122,89 @@ def generate_test_profiles():
 
     photo_path = _find_test_batch_photo()
     if not photo_path:
-        flash('Coloque uma foto JPG, PNG ou WebP na pasta teste.', 'danger')
+        flash('Coloque uma foto na pasta teste.', 'danger')
         return redirect(url_for('login'))
 
-    try:
-        client = get_supabase_client()
-    except SupabaseConfigurationError as error:
-        flash(str(error), 'database')
-        return redirect(url_for('login'))
-
+    client = get_supabase_client()
     upload_folder = app.config['PHOTO_UPLOAD_FOLDER']
     generated_photo_names = []
-    try:
-        existing_profiles = (
-            client.table('user')
-            .select('id,fotos')
-            .like('email', TEST_PROFILE_EMAIL_PATTERN)
-            .execute()
-            .data
-            or []
-        )
-        with photo_path.open('rb') as source:
-            master_name = save_uploaded_photos(
-                [FileStorage(stream=source, filename=photo_path.name)],
-                upload_folder,
-            )[0]
-        generated_photo_names.append(master_name)
-        master_path = Path(upload_folder) / master_name
-        profile_rows = []
-        photo_names = []
-        password_hash = generate_password_hash('DateNight-Teste-2026!')
-        for index in range(1, 101):
-            photo_name = f'{uuid4().hex}.jpg'
-            shutil.copyfile(master_path, Path(upload_folder) / photo_name)
-            photo_names.append(photo_name)
-            generated_photo_names.append(photo_name)
+    existing_profiles = client.table('user').select('id,fotos').like('email', TEST_PROFILE_EMAIL_PATTERN).execute().data or []
+    with photo_path.open('rb') as source:
+        master_name = save_uploaded_photos([FileStorage(stream=source, filename=photo_path.name)], upload_folder)[0]
+    generated_photo_names.append(master_name)
+    master_path = Path(upload_folder) / master_name
+    profile_rows = []
+    photo_names = []
+    password_hash = generate_password_hash('DateNight-Teste-2026!')
+    for index in range(1, 101):
+        photo_name = f'{uuid4().hex}.jpg'
+        shutil.copyfile(master_path, Path(upload_folder) / photo_name)
+        photo_names.append(photo_name)
+        generated_photo_names.append(photo_name)
+        profile = dict(PROFILE_INTEGER_DEFAULTS)
+        gender = index % 2
+        profile.update({
+            'nome': f'Perfil de teste {index:03d}',
+            'email': f'date-night-test-{uuid4().hex[:10]}-{index:03d}@example.test',
+            'senha': password_hash,
+            'dia': (index % 28) + 1,
+            'mes': (index % 12) + 1,
+            'ano': 1988 + (index % 15),
+            'genero': gender,
+            'pref_genero': 1 - gender,
+            'altura': 155 + (index % 45),
+            'peso': 50 + (index % 45),
+            'fisico': index % len(PROFILE_OPTIONS['fisico']),
+            'cabelo': index % len(PROFILE_OPTIONS['cabelo']),
+            'pele': index % len(PROFILE_OPTIONS['pele']),
+            'tatuagens': index % 2,
+            'fumar': 0,
+            'salario': index % len(PROFILE_OPTIONS['salario']),
+            'certificacao': index % len(PROFILE_OPTIONS['certificacao']),
+            'tracos': index % len(PROFILE_OPTIONS['tracos']),
+            'pref_fisico': 0,
+            'pref_tatuagens': 0,
+            'pref_fumar': 1,
+            'preto': 1,
+            'castanho': 1,
+            'loiro': 1,
+            'ruivo': 1,
+            'escura': 1,
+            'morena': 1,
+            'clara': 1,
+            'fotos': [photo_name],
+        })
+        profile['imc'] = calculate_imc(profile['peso'], profile['altura'])
+        for interest_index, (field, _label) in enumerate(INTEREST_FIELDS):
+            profile[field] = int((index + interest_index) % 3 == 0)
+        profile_rows.append(profile)
+    delete_uploaded_photos([master_name], upload_folder)
+    generated_photo_names.remove(master_name)
+    client.table('user').insert(profile_rows).execute()
 
-            profile = dict(PROFILE_INTEGER_DEFAULTS)
-            gender = index % 2
-            profile.update({
-                'nome': f'Perfil de teste {index:03d}',
-                'email': f'date-night-test-{uuid4().hex[:10]}-{index:03d}@example.test',
-                'senha': password_hash,
-                'dia': (index % 28) + 1,
-                'mes': (index % 12) + 1,
-                'ano': 1988 + (index % 15),
-                'genero': gender,
-                'pref_genero': 1 - gender,
-                'altura': 155 + (index % 45),
-                'peso': 50 + (index % 45),
-                'fisico': index % len(PROFILE_OPTIONS['fisico']),
-                'cabelo': index % len(PROFILE_OPTIONS['cabelo']),
-                'pele': index % len(PROFILE_OPTIONS['pele']),
-                'tatuagens': index % 2,
-                'fumar': 0,
-                'salario': index % len(PROFILE_OPTIONS['salario']),
-                'certificacao': index % len(PROFILE_OPTIONS['certificacao']),
-                'tracos': index % len(PROFILE_OPTIONS['tracos']),
-                'pref_fisico': 0,
-                'pref_tatuagens': 0,
-                'pref_fumar': 1,
-                'preto': 1,
-                'castanho': 1,
-                'loiro': 1,
-                'ruivo': 1,
-                'escura': 1,
-                'morena': 1,
-                'clara': 1,
-                'fotos': [photo_name],
-            })
-            profile['imc'] = calculate_imc(profile['peso'], profile['altura'])
-            for interest_index, (field, _label) in enumerate(INTEREST_FIELDS):
-                profile[field] = int((index + interest_index) % 3 == 0)
-            profile_rows.append(profile)
-        delete_uploaded_photos([master_name], upload_folder)
-        generated_photo_names.remove(master_name)
-        client.table('user').insert(profile_rows).execute()
-
-        existing_ids = [profile['id'] for profile in existing_profiles]
-        if existing_ids:
-            try:
-                client.table('ficha').delete().in_('id_user_a', existing_ids).execute()
-                client.table('ficha').delete().in_('id_user_b', existing_ids).execute()
-                client.table('user').delete().in_('id', existing_ids).execute()
-                old_photos = [
-                    photo
-                    for profile in existing_profiles
-                    for photo in profile.get('fotos') or []
-                ]
-                delete_uploaded_photos(old_photos, upload_folder)
-            except SUPABASE_ERRORS:
-                app.logger.exception('Os novos perfis foram criados, mas não foi possível remover o lote anterior')
-                flash('100 perfis criados; não foi possível remover o lote de teste anterior.', 'warning')
-                return redirect(url_for('login'))
-    except ValueError as error:
-        delete_uploaded_photos(generated_photo_names, upload_folder)
-        flash(str(error), 'danger')
-        return redirect(url_for('login'))
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao gerar perfis de teste no Supabase')
-        delete_uploaded_photos(generated_photo_names, upload_folder)
-        flash('Não foi possível gerar os perfis. Confira o terminal do Flask.', 'danger')
-        return redirect(url_for('login'))
+    existing_ids = [profile['id'] for profile in existing_profiles]
+    if existing_ids:
+        client.table('ficha').delete().in_('id_user_a', existing_ids).execute()
+        client.table('ficha').delete().in_('id_user_b', existing_ids).execute()
+        client.table('user').delete().in_('id', existing_ids).execute()
+        old_photos = []
+        for profile in existing_profiles:
+            for photo in profile.get('fotos') or []:
+                old_photos.append(photo)
+        delete_uploaded_photos(old_photos, upload_folder)
 
     flash('100 perfis de teste foram gerados.', 'success')
     return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
-    """Logout: saída."""
     session.clear()
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """Cadastro: novo usuário."""
     if request.method == 'POST':
-        try:
-            values = parse_profile_form(request.form)
-        except ValueError as error:
-            flash(str(error), 'danger')
-            return render_template('register.html', form_data=request.form)
-
+        values = parse_profile_form(request.form)
         password = request.form.get('senha', '')
         if len(password) < 6:
             flash('A senha deve ter pelo menos seis caracteres.', 'danger')
@@ -274,50 +212,16 @@ def register():
         if password != request.form.get('confirmar_senha', ''):
             flash('As senhas não coincidem.', 'danger')
             return render_template('register.html', form_data=request.form)
-
-        try:
-            client = get_supabase_client()
-        except SupabaseConfigurationError as error:
-            flash(str(error), 'database')
-            return render_template('register.html', form_data=request.form)
-
-        try:
-            photo_names = save_uploaded_photos(
-                request.files.getlist('fotos'), app.config['PHOTO_UPLOAD_FOLDER']
-            )
-        except ValueError as error:
-            flash(str(error), 'danger')
-            return render_template('register.html', form_data=request.form)
-
+        client = get_supabase_client()
+        photo_names = save_uploaded_photos(request.files.getlist('fotos'), app.config['PHOTO_UPLOAD_FOLDER'])
         values['imc'] = calculate_imc(values['peso'], values['altura'])
         values['fotos'] = photo_names
         values['senha'] = generate_password_hash(password)
-
         try:
             client.table("user").insert(values).execute()
-        except APIError as error:
-            delete_uploaded_photos(photo_names, app.config['PHOTO_UPLOAD_FOLDER'])
-            app.logger.exception('Falha ao inserir cadastro no Supabase')
-            error_code = getattr(error, 'code', None)
-            if error_code == '23505':
-                flash('Já existe uma conta com esse e-mail.', 'danger')
-            elif error_code == '42501':
-                flash('O Supabase bloqueou o cadastro por permissão ou política RLS. Confira a chave server-side e as políticas da tabela user.', 'danger')
-            elif error_code in {'PGRST205', 'PGRST204', '42P01', '42703'}:
-                flash('Tabela ou coluna do Date Night não encontrada. Aplique schema_postgresql.sql no Supabase.', 'danger')
-            else:
-                flash(f'Falha ao salvar no Supabase (código {error_code or "API"}). Confira o terminal do Flask.', 'danger')
+        except:
+            flash('Erro ao salvar no banco de dados.', 'danger')
             return render_template('register.html', form_data=request.form)
-        except httpx.HTTPError:
-            app.logger.exception('Falha de conexão ao inserir cadastro no Supabase')
-            delete_uploaded_photos(photo_names, app.config['PHOTO_UPLOAD_FOLDER'])
-            flash('Sem conexão com o Supabase. Confira a URL e a conexão de rede.', 'database')
-            return render_template('register.html', form_data=request.form)
-        except SupabaseConfigurationError as error:
-            delete_uploaded_photos(photo_names, app.config['PHOTO_UPLOAD_FOLDER'])
-            flash(str(error), 'database')
-            return render_template('register.html', form_data=request.form)
-
         flash('Cadastro realizado. Entre com seu e-mail e senha.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', form_data={})
@@ -342,7 +246,7 @@ def _load_match_candidates(user_id):
     candidates = []
     for ficha in fichas:
         side = 'a' if ficha['id_user_a'] == user_id else 'b'
-        if ficha.get(f'recusou_{side}', 0):
+        if ficha.get(f'recusou_{side}', 0) or ficha.get(f'gostei_{side}', 0) or ficha.get(f'amei_{side}', 0):
             continue
         other_id = ficha['id_user_b'] if side == 'a' else ficha['id_user_a']
         other_user = users_by_id.get(other_id)
@@ -368,6 +272,7 @@ def _load_match_candidates(user_id):
         candidate['my_love'] = candidate[f'amei_{side}']
         candidate['their_like'] = candidate[f'gostei_{other_side}']
         candidate['their_love'] = candidate[f'amei_{other_side}']
+        candidate['summary'] = profile_summary(other_user)
         candidates.append(candidate)
     candidates.sort(
         key=lambda item: (
@@ -381,17 +286,9 @@ def _load_match_candidates(user_id):
 
 @app.route('/home')
 def home():
-    """Lista os perfis compatíveis."""
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-    try:
-        current_user, candidates = _load_match_candidates(session['user_id'])
-    except SUPABASE_ERRORS as error:
-        app.logger.exception('Falha ao carregar perfis pelo Supabase')
-        flash(_supabase_error_message(error, 'carregar perfis'), 'database')
-        return render_template('home.html', current_user=None, candidates=[])
-
+    current_user, candidates = _load_match_candidates(session['user_id'])
     if not current_user:
         session.clear()
         return redirect(url_for('login'))
@@ -400,21 +297,12 @@ def home():
 
 @app.route('/encounter')
 def encounter():
-    """Mostra um perfil por vez para o encontro."""
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-    try:
-        current_user, candidates = _load_match_candidates(session['user_id'])
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao carregar encontro pelo Supabase')
-        flash('Não foi possível carregar o encontro. Confira a configuração do Supabase.', 'database')
-        return render_template('encounter.html', current_user=None, candidate=None)
-
+    current_user, candidates = _load_match_candidates(session['user_id'])
     if not current_user:
         session.clear()
         return redirect(url_for('login'))
-
     position = request.args.get('position', 0, type=int)
     if candidates:
         position = max(0, min(position, len(candidates) - 1))
@@ -424,10 +312,7 @@ def encounter():
         position = 0
         candidate = None
         details = []
-    return render_template(
-        'encounter.html', current_user=current_user, candidate=candidate,
-        details=details, position=position, total=len(candidates),
-    )
+    return render_template('encounter.html', current_user=current_user, candidate=candidate, details=details, position=position, total=len(candidates))
 
 
 @app.route('/matches/<int:ficha_id>/action', methods=['POST'])
@@ -435,55 +320,35 @@ def match_action(ficha_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     action = request.form.get('action')
-    if action not in {'like', 'love', 'skip'}:
-        abort(400)
-
     user_id = session['user_id']
-    try:
-        client = get_supabase_client()
-        fichas = client.table("ficha").select("*").eq("id", ficha_id).limit(1).execute().data or []
-        ficha = fichas[0] if fichas else None
-        if not ficha or user_id not in (ficha['id_user_a'], ficha['id_user_b']):
-            abort(404)
-
-        side = 'a' if ficha['id_user_a'] == user_id else 'b'
-        changes = {"data_interacao": datetime.now(timezone.utc).isoformat()}
-        if action == 'skip':
-            changes[f'recusou_{side}'] = 1
-        else:
-            column = 'gostei' if action == 'like' else 'amei'
-            changes[f'{column}_{side}'] = 1
-            updated_ficha = {**ficha, **changes}
-            matched = bool(
-                (updated_ficha.get('gostei_a') and updated_ficha.get('gostei_b'))
-                or (updated_ficha.get('amei_a') and updated_ficha.get('amei_b'))
-            )
-            changes['match'] = int(matched)
-            changes['data_match'] = ficha.get('data_match') or datetime.now(timezone.utc).isoformat() if matched else None
-        client.table("ficha").update(changes).eq("id", ficha_id).execute()
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao registrar interação no Supabase')
-        flash('Não foi possível registrar sua escolha.', 'danger')
-
+    client = get_supabase_client()
+    fichas = client.table("ficha").select("*").eq("id", ficha_id).limit(1).execute().data or []
+    ficha = fichas[0] if fichas else None
+    if not ficha:
+        abort(404)
+    side = 'a' if ficha['id_user_a'] == user_id else 'b'
+    changes = {"data_interacao": datetime.now(timezone.utc).isoformat()}
+    if action == 'skip':
+        changes[f'recusou_{side}'] = 1
+    else:
+        column = 'gostei' if action == 'like' else 'amei'
+        changes[f'{column}_{side}'] = 1
+        updated_ficha = {**ficha, **changes}
+        matched = bool((updated_ficha.get('gostei_a') and updated_ficha.get('gostei_b')) or (updated_ficha.get('amei_a') and updated_ficha.get('amei_b')))
+        changes['match'] = int(matched)
+        changes['data_match'] = ficha.get('data_match') or datetime.now(timezone.utc).isoformat() if matched else None
+    client.table("ficha").update(changes).eq("id", ficha_id).execute()
     position = request.form.get('position', 0, type=int)
     next_position = position if action == 'skip' else position + 1
-    return redirect(url_for('encounter', position=next_position))
+    return redirect(url_for('home'))
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    """Perfil: visualização e edição."""
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
     user_id = session['user_id']
-
     if request.method == 'POST':
-        try:
-            values = parse_profile_form(request.form)
-        except ValueError as error:
-            flash(str(error), 'danger')
-            return render_template('profile.html', user=request.form, form_data=request.form)
-
+        values = parse_profile_form(request.form)
         password = request.form.get('nova_senha', '')
         confirmation = request.form.get('confirmar_senha', '')
         if password or confirmation:
@@ -492,96 +357,40 @@ def profile():
                 return render_template('profile.html', user=request.form, form_data=request.form)
             values['senha'] = generate_password_hash(password)
         values['imc'] = calculate_imc(values['peso'], values['altura'])
-        new_photos = []
+        client = get_supabase_client()
+        current_users = client.table("user").select("fotos").eq("id", user_id).limit(1).execute().data or []
+        current_user = current_users[0] if current_users else None
+        if not current_user:
+            session.clear()
+            return redirect(url_for('login'))
+        current_photos = list(current_user.get('fotos') or [])
+        remove_requested = set(request.form.getlist('remover_fotos'))
         removed_photos = []
-        try:
-            client = get_supabase_client()
-            current_users = client.table("user").select("fotos").eq("id", user_id).limit(1).execute().data or []
-            current_user = current_users[0] if current_users else None
-            if not current_user:
-                session.clear()
-                return redirect(url_for('login'))
-            current_photos = list(current_user.get('fotos') or [])
-            remove_requested = set(request.form.getlist('remover_fotos'))
-            removed_photos = [photo for photo in current_photos if photo in remove_requested]
-            retained_photos = [photo for photo in current_photos if photo not in remove_requested]
-            new_photos = save_uploaded_photos(
-                request.files.getlist('fotos'),
-                app.config['PHOTO_UPLOAD_FOLDER'],
-                existing_count=len(retained_photos),
-            )
-            values['fotos'] = retained_photos + new_photos
-            client.table("user").update(values).eq("id", user_id).execute()
-        except ValueError as error:
-            delete_uploaded_photos(new_photos, app.config['PHOTO_UPLOAD_FOLDER'])
-            flash(str(error), 'danger')
-            return render_template('profile.html', user=request.form, form_data=request.form)
-        except APIError as error:
-            delete_uploaded_photos(new_photos, app.config['PHOTO_UPLOAD_FOLDER'])
-            app.logger.exception('Falha ao atualizar perfil no Supabase')
-            if getattr(error, 'code', None) == '23505':
-                flash('Esse e-mail já pertence a outra conta.', 'danger')
+        retained_photos = []
+        for photo in current_photos:
+            if photo in remove_requested:
+                removed_photos.append(photo)
             else:
-                flash('Não foi possível atualizar o perfil no Supabase.', 'danger')
-            return render_template('profile.html', user=request.form, form_data=request.form)
-        except (httpx.HTTPError, SupabaseConfigurationError):
-            delete_uploaded_photos(new_photos, app.config['PHOTO_UPLOAD_FOLDER'])
-            app.logger.exception('Falha de conexão ao atualizar perfil no Supabase')
-            flash('Não foi possível conectar ao Supabase.', 'database')
-            return render_template('profile.html', user=request.form, form_data=request.form)
+                retained_photos.append(photo)
+        new_photos = save_uploaded_photos(request.files.getlist('fotos'), app.config['PHOTO_UPLOAD_FOLDER'], existing_count=len(retained_photos))
+        values['fotos'] = retained_photos + new_photos
+        client.table("user").update(values).eq("id", user_id).execute()
         delete_uploaded_photos(removed_photos, app.config['PHOTO_UPLOAD_FOLDER'])
         flash('Perfil atualizado.', 'success')
         return redirect(url_for('profile'))
-
-    try:
-        users = get_supabase_client().table("user").select("*").eq("id", user_id).limit(1).execute().data or []
-        user = users[0] if users else None
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao carregar perfil do Supabase')
-        flash('Não foi possível carregar o perfil.', 'danger')
-        return redirect(url_for('home'))
+    users = get_supabase_client().table("user").select("*").eq("id", user_id).limit(1).execute().data or []
+    user = users[0] if users else None
     if not user:
         session.clear()
         return redirect(url_for('login'))
-    return render_template(
-        'profile.html', user=user, form_data=user,
-        existing_photos=user.get('fotos') or [],
-    )
+    return render_template('profile.html', user=user, form_data=user, existing_photos=user.get('fotos') or [])
 
 
 @app.route('/uploads/<filename>')
 def uploaded_photo(filename):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    if not PHOTO_NAME_PATTERN.fullmatch(filename):
-        abort(404)
-
-    user_id = session['user_id']
-    try:
-        client = get_supabase_client()
-        photo_owners = client.table("user").select("id").contains(
-            "fotos", [filename]
-        ).execute().data or []
-        photo_owner_ids = {owner['id'] for owner in photo_owners}
-        authorized = user_id in photo_owner_ids
-        if not authorized and photo_owner_ids:
-            fichas_a = client.table("ficha").select("id_user_b").eq(
-                "id_user_a", user_id
-            ).in_("id_user_b", list(photo_owner_ids)).limit(1).execute().data or []
-            fichas_b = client.table("ficha").select("id_user_a").eq(
-                "id_user_b", user_id
-            ).in_("id_user_a", list(photo_owner_ids)).limit(1).execute().data or []
-            authorized = bool(fichas_a or fichas_b)
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao verificar acesso à foto no Supabase')
-        abort(404)
-    if not authorized:
-        abort(404)
-    response = send_from_directory(
-        app.config['PHOTO_UPLOAD_FOLDER'], filename, mimetype='image/jpeg'
-    )
-    response.headers['Cache-Control'] = 'private, no-store'
-    return response
+    return send_from_directory(app.config['PHOTO_UPLOAD_FOLDER'], filename, mimetype='image/jpeg')
 
 
 @app.route('/profile/delete', methods=['POST'])
@@ -589,17 +398,12 @@ def delete_profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user_id = session['user_id']
-    try:
-        client = get_supabase_client()
-        users = client.table("user").select("fotos").eq("id", user_id).limit(1).execute().data or []
-        user = users[0] if users else None
-        client.table("ficha").delete().eq("id_user_a", user_id).execute()
-        client.table("ficha").delete().eq("id_user_b", user_id).execute()
-        client.table("user").delete().eq("id", user_id).execute()
-    except SUPABASE_ERRORS:
-        app.logger.exception('Falha ao excluir perfil no Supabase')
-        flash('Não foi possível excluir a conta.', 'danger')
-        return redirect(url_for('profile'))
+    client = get_supabase_client()
+    users = client.table("user").select("fotos").eq("id", user_id).limit(1).execute().data or []
+    user = users[0] if users else None
+    client.table("ficha").delete().eq("id_user_a", user_id).execute()
+    client.table("ficha").delete().eq("id_user_b", user_id).execute()
+    client.table("user").delete().eq("id", user_id).execute()
     if user:
         delete_uploaded_photos(user.get('fotos') or [], app.config['PHOTO_UPLOAD_FOLDER'])
     session.clear()

@@ -3,17 +3,17 @@
 {% block title %}Cadastro - DateNight{% endblock %}
 
 {% block content %}
-<main class="form-page">
-    <header class="page-heading">
-        <p class="eyebrow">Date Night</p>
-        <h1>Crie seu perfil</h1>
-    </header>
-    <form class="glass-card profile-card" method="POST" action="{{ url_for('register') }}" enctype="multipart/form-data">
-        {% set account_mode = 'register' %}
-        {% include '_profile_fields.html' %}
-        <button class="btn btn-complete" type="submit">Concluir cadastro</button>
-    </form>
-</main>
+<div class="form-page">
+<div class="page-heading">
+<p class="eyebrow">Date Night</p>
+<h1>Crie seu perfil</h1>
+</div>
+<form class="glass-card profile-card" method="POST" action="{{ url_for('register') }}" enctype="multipart/form-data">
+{% set account_mode = 'register' %}
+{% include '_profile_fields.html' %}
+<button class="btn btn-complete" type="submit">Concluir cadastro</button>
+</form>
+</div>
 {% endblock %}
 
 {% block scripts %}

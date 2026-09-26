@@ -3,62 +3,62 @@
 {% block title %}Encontro - DateNight{% endblock %}
 
 {% block content %}
-<main class="discovery-page">
-    <header class="discovery-heading">
-        <div>
-            <p class="eyebrow">Encontro</p>
-            <h1>Olá, {{ current_user.nome if current_user else '' }}</h1>
-        </div>
-        {% if candidate %}<p class="position-count">{{ position + 1 }} / {{ total }}</p>{% endif %}
-    </header>
+<div class="discovery-page">
+<div class="discovery-heading">
+<div>
+<p class="eyebrow">Encontro</p>
+<h1>Olá, {{ current_user.nome if current_user else '' }}</h1>
+</div>
+{% if candidate %}<p class="position-count">{{ position + 1 }} / {{ total }}</p>{% endif %}
+</div>
 
-    {% if candidate %}
-    <section class="candidate-panel" aria-labelledby="candidate-name">
-        <div class="candidate-header">
-            <div>
-                <p class="eyebrow">{{ candidate.compatibilidade }} pontos de afinidade</p>
-                <h2 id="candidate-name">{{ candidate.nome }}</h2>
-            </div>
-            {% if candidate['match'] %}<p class="match-status">Match mútuo</p>{% endif %}
-        </div>
+{% if candidate %}
+<div class="candidate-panel">
+<div class="candidate-header">
+<div>
+<p class="eyebrow">{{ candidate.compatibilidade }} pontos de afinidade</p>
+<h2>{{ candidate.nome }}</h2>
+</div>
+{% if candidate['match'] %}<p class="match-status">Match mútuo</p>{% endif %}
+</div>
 
-        {% if candidate.fotos %}
-        <div class="photo-gallery photo-gallery--candidate">
-            {% for photo in candidate.fotos %}
-            <img src="{{ url_for('uploaded_photo', filename=photo) }}" alt="Foto de {{ candidate.nome }}" loading="lazy">
-            {% endfor %}
-        </div>
-        {% endif %}
+{% if candidate.fotos %}
+<div class="photo-gallery photo-gallery--candidate">
+{% for photo in candidate.fotos %}
+<img src="{{ url_for('uploaded_photo', filename=photo) }}" alt="Foto">
+{% endfor %}
+</div>
+{% endif %}
 
-        <dl class="profile-facts">
-            {% for label, value in details %}
-            <div class="profile-fact">
-                <dt>{{ label }}</dt>
-                <dd>{{ value or 'Não informado' }}</dd>
-            </div>
-            {% endfor %}
-        </dl>
+<dl class="profile-facts">
+{% for label, value in details %}
+<div class="profile-fact">
+<dt>{{ label }}</dt>
+<dd>{{ value or 'Não informado' }}</dd>
+</div>
+{% endfor %}
+</dl>
 
-        <div class="candidate-actions">
-            <a class="btn btn-secondary" href="{{ url_for('encounter', position=[position - 1, 0]|max) }}" aria-label="Perfil anterior">Anterior</a>
-            <form method="POST" action="{{ url_for('match_action', ficha_id=candidate.ficha_id) }}" data-match-actions>
-                <input type="hidden" name="position" value="{{ position }}">
-                <button class="btn btn-secondary" type="submit" name="action" value="skip" aria-label="Pular perfil">Pular</button>
-                <button class="btn btn-like" type="submit" name="action" value="like">Gostei</button>
-                <button class="btn btn-love" type="submit" name="action" value="love">Amei</button>
-            </form>
-            <a class="btn btn-secondary" href="{{ url_for('encounter', position=[position + 1, total - 1]|min) }}" aria-label="Próximo perfil">Próximo</a>
-        </div>
-        <p class="keyboard-hint">← Amei · → Gostei · ↓ Pular · ↑ Anterior</p>
-    </section>
-    {% else %}
-    <section class="empty-state">
-        <h2>Nenhum encontro disponível</h2>
-        <p>Não há perfis compatíveis para mostrar agora.</p>
-        <a class="btn btn-secondary" href="{{ url_for('home') }}">Ver perfis</a>
-    </section>
-    {% endif %}
-</main>
+<div class="candidate-actions">
+<a class="btn btn-secondary" href="{{ url_for('encounter', position=[position - 1, 0]|max) }}">Anterior</a>
+<form method="POST" action="{{ url_for('match_action', ficha_id=candidate.ficha_id) }}">
+<input type="hidden" name="position" value="{{ position }}">
+<button class="btn btn-secondary" type="submit" name="action" value="skip">Pular</button>
+<button class="btn btn-like" type="submit" name="action" value="like">Gostei</button>
+<button class="btn btn-love" type="submit" name="action" value="love">Amei</button>
+</form>
+<a class="btn btn-secondary" href="{{ url_for('encounter', position=[position + 1, total - 1]|min) }}">Próximo</a>
+</div>
+<p class="keyboard-hint">← Amei · → Gostei · ↓ Pular · ↑ Anterior</p>
+</div>
+{% else %}
+<div class="empty-state">
+<h2>Nenhum encontro disponível</h2>
+<p>Não há perfis compatíveis para mostrar agora.</p>
+<a class="btn btn-secondary" href="{{ url_for('home') }}">Ver perfis</a>
+</div>
+{% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}

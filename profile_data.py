@@ -102,47 +102,18 @@ BINARY_FIELDS = {"tatuagens", "fumar", "pref_fisico", "pref_tatuagens", "pref_fu
 def parse_profile_form(form):
     nome = form.get("nome", "").strip()
     email = form.get("email", "").strip().lower()
-    if not nome:
-        raise ValueError("Informe seu nome.")
-    if len(nome) > 120:
-        raise ValueError("O nome deve ter até 120 caracteres.")
-    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
-        raise ValueError("Informe um e-mail válido.")
-
     values = {"nome": nome, "email": email}
-    for field, default in PROFILE_INTEGER_DEFAULTS.items():
-        raw_value = form.get(field, str(default))
-        try:
-            value = int(raw_value)
-        except (TypeError, ValueError):
-            raise ValueError("Confira os valores do perfil.") from None
-
-        if field in PROFILE_OPTIONS and not 0 <= value < len(PROFILE_OPTIONS[field]):
-            raise ValueError("Confira as opções selecionadas.")
-        if field in INTEGER_RANGES:
-            minimum, maximum = INTEGER_RANGES[field]
-            if not minimum <= value <= maximum:
-                raise ValueError("Confira os dados de nascimento, altura e peso.")
-        if field in BINARY_FIELDS and value not in (0, 1):
-            raise ValueError("Confira as opções selecionadas.")
-        if field == "tracos" and not 0 <= value < len(PROFILE_OPTIONS[field]):
-            raise ValueError("Confira as opções selecionadas.")
-        values[field] = value
-
-    try:
-        birth_date = date(values["ano"], values["mes"], values["dia"])
-    except ValueError:
-        raise ValueError("A data de nascimento não é válida.") from None
-    if birth_date > date.today():
-        raise ValueError("A data de nascimento não pode estar no futuro.")
-
+    for field in PROFILE_INTEGER_DEFAULTS:
+        raw_value = form.get(field, str(PROFILE_INTEGER_DEFAULTS[field]))
+        values[field] = int(raw_value)
     for fields in (("preto", "castanho", "loiro", "ruivo"), ("escura", "morena", "clara")):
-        if not any(values[field] for field in fields):
+        nenhum = True
+        for field in fields:
+            if values[field] != 0:
+                nenhum = False
+        if nenhum:
             for field in fields:
                 values[field] = 1
-
-    if sum(values[field] for field, _ in INTEREST_FIELDS) < 3:
-        raise ValueError("Selecione pelo menos três interesses.")
     return values
 
 
@@ -153,11 +124,25 @@ def calculate_imc(peso, altura):
 def profile_summary(user):
     birth_date = date(int(user["ano"]), int(user["mes"]), int(user["dia"]))
     age = date.today().year - birth_date.year - ((date.today().month, date.today().day) < (birth_date.month, birth_date.day))
+    interesses = ""
+    for field, label in INTEREST_FIELDS:
+        if user[field]:
+            if interesses != "":
+                interesses = interesses + ", "
+            interesses = interesses + label
+    aparencia = ""
+    for field, label in APPEARANCE_PREFERENCES:
+        if user[field]:
+            if aparencia != "":
+                aparencia = aparencia + ", "
+            aparencia = aparencia + label
+    if aparencia == "":
+        aparencia = "Indiferente"
     rows = [
-        ("Idade", f"{age} anos"),
+        ("Idade", str(age) + " anos"),
         ("Gênero", PROFILE_OPTIONS["genero"][user["genero"]]),
-        ("Altura", f"{user['altura']} cm"),
-        ("Peso", f"{user['peso']} kg"),
+        ("Altura", str(user['altura']) + " cm"),
+        ("Peso", str(user['peso']) + " kg"),
         ("Tipo físico", PROFILE_OPTIONS["fisico"][user["fisico"]]),
         ("Cabelo", PROFILE_OPTIONS["cabelo"][user["cabelo"]]),
         ("Pele", PROFILE_OPTIONS["pele"][user["pele"]]),
@@ -166,14 +151,11 @@ def profile_summary(user):
         ("Renda", PROFILE_OPTIONS["salario"][user["salario"]]),
         ("Formação", PROFILE_OPTIONS["certificacao"][user["certificacao"]]),
         ("Estilo", PROFILE_OPTIONS["tracos"][user["tracos"]]),
-        ("Interesses", ", ".join(label for field, label in INTEREST_FIELDS if user[field])),
+        ("Interesses", interesses),
         ("Gênero de interesse", PROFILE_OPTIONS["pref_genero"][user["pref_genero"]]),
         ("Preferência física", "Sim" if user["pref_fisico"] else "Indiferente"),
         ("Preferência por tatuagens", "Sem tatuagens" if user["pref_tatuagens"] else "Indiferente"),
         ("Aceita fumantes", "Sim" if user["pref_fumar"] else "Não"),
-        (
-            "Aparência preferida",
-            ", ".join(label for field, label in APPEARANCE_PREFERENCES if user[field]) or "Indiferente",
-        ),
+        ("Aparência preferida", aparencia),
     ]
     return rows
