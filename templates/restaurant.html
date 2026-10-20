@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Painel do restaurante - DateNight{% endblock %}
+
+{% block content %}
+<main class="restaurant-page">
+{% if not authenticated %}
+<section class="empty-state restaurant-login">
+<p class="eyebrow">Acesso do estabelecimento</p><h1>Painel do evento</h1>
+<form method="post" class="restaurant-access-form">
+<label for="access_token">Credencial de acesso</label>
+<input class="form-control" id="access_token" name="access_token" type="password" autocomplete="current-password" required>
+<button class="btn btn-like" type="submit">Entrar</button>
+</form>
+</section>
+{% else %}
+<header class="discovery-heading"><div><p class="eyebrow">Estabelecimento</p><h1>{{ event.restaurante if event and event.restaurante else 'Painel do evento' }}</h1></div>
+<form method="post" action="{{ url_for('restaurant_logout') }}"><button class="btn btn-secondary" type="submit">Sair</button></form></header>
+{% if event %}
+<section class="event-summary">
+<div><span class="eyebrow">Próximo evento</span><strong>{{ event.nome }}</strong><time>{{ event.data_hora }}</time></div>
+<div class="capacity-meter"><strong>{{ confirmed_count }} / {{ event.capacidade_casais }}</strong><span>casais confirmados</span><span>{{ remaining }} matches faltam para lotar</span></div>
+</section>
+<section class="restaurant-roster"><h2>Presenças confirmadas</h2>
+{% for item in matches %}<article class="roster-row"><strong>{{ item.names|join(' + ') }}</strong></article>
+{% else %}<p>Nenhum casal confirmado para este evento.</p>{% endfor %}
+</section>
+{% else %}<div class="empty-state"><h2>Nenhum evento ativo</h2><p>Configure um evento no banco para acompanhar as confirmações.</p></div>{% endif %}
+{% endif %}
+</main>
+{% endblock %}

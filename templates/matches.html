@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Matches - DateNight{% endblock %}
+
+{% block content %}
+<main class="matches-page" data-status-url="{{ url_for('matches_status') }}">
+<header class="discovery-heading">
+<h1>Matches</h1>
+</header>
+
+{% if event %}
+<section class="event-summary" aria-label="Informações do evento">
+<div><span class="eyebrow">Próximo evento</span><strong>{{ event.nome }}</strong><time>{{ event.data_hora }}</time></div>
+<div class="capacity-meter" data-event-capacity="{{ event.capacidade_casais }}"><strong><span id="confirmedCount">{{ confirmed_count }}</span> / {{ event.capacidade_casais }}</strong><span>casais confirmados</span><span id="remainingCount">{{ remaining }} vagas para atingir a capacidade</span></div>
+</section>
+{% endif %}
+
+<section class="match-list" aria-label="Matches">
+{% for item in matches %}
+<article class="match-row" data-match-id="{{ item.id }}" data-state="{{ item.state }}">
+<div class="match-person"><h2>{{ item.partner_name }}</h2><span>{{ item.compatibilidade }} pontos de afinidade</span></div>
+<div class="match-state" aria-live="polite">
+{% if item.state == 'pending' %}
+<p>Houve um Match! Você confirma sua participação no encontro com {{ item.partner_name }}?</p>
+<form class="confirmation-form" method="post" action="{{ url_for('match_confirmation', ficha_id=item.id) }}">
+<button class="btn btn-like" name="action" value="confirm">Confirmar presença</button>
+<button class="btn btn-secondary" name="action" value="decline">Recusar</button>
+</form>
+{% elif item.state == 'waiting' %}
+<p>Você confirmou! Aguardando a confirmação do seu par.</p>
+{% elif item.state == 'confirmed' %}
+<p>Encontro confirmado! Vocês dois aceitaram.</p>
+{% if event and item.event_id == event.id %}<p class="event-time">Data e hora: {{ event.data_hora }}</p>{% endif %}
+{% else %}
+<p>Este encontro foi recusado.</p>
+{% endif %}
+</div>
+</article>
+{% else %}
+<div class="empty-state"><h2>Nenhum match por enquanto</h2></div>
+{% endfor %}
+</section>
+
+{% if request.remote_addr in ('127.0.0.1', '::1') %}
+<button class="btn btn-secondary debug-open" type="button" id="debugOpen">Dev</button>
+<dialog class="debug-dialog" id="debugDialog" aria-labelledby="debugTitle">
+<div class="dialog-heading"><h2 id="debugTitle">Painel de desenvolvimento</h2><button type="button" id="debugClose" aria-label="Fechar">Fechar</button></div>
+{% if debug_matches %}
+<ul class="debug-match-list">
+{% for debug in debug_matches %}<li><strong>{{ debug.name_a }} + {{ debug.name_b }}</strong><span>{{ debug.score }} pontos</span><small>Curtiu: {% if debug.liked_by_a %}{{ debug.name_a }}{% endif %}{% if debug.liked_by_a and debug.liked_by_b %} e {% endif %}{% if debug.liked_by_b %}{{ debug.name_b }}{% endif %}{% if not debug.liked_by_a and not debug.liked_by_b %}Match mútuo{% endif %}</small></li>{% endfor %}
+</ul>
+{% else %}<p>Nenhum match registrado.</p>{% endif %}
+</dialog>
+{% endif %}
+</main>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/matches.js', v='matches-json-v2') }}" defer></script>{% endblock %}

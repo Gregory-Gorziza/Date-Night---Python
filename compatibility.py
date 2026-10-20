@@ -12,16 +12,40 @@ class Compatibilidade:
             return
         user = user_rows[0]
         other_users = client.table("user").select("*").neq("id", current_user_id).execute().data or []
+        fichas_to_save = []
+        incompatible_as_a = []
+        incompatible_as_b = []
 
         for comp_user in other_users:
             if not self._check_gender(user, comp_user):
-                self._delete_ficha(client, current_user_id, comp_user["id"])
+                if current_user_id < comp_user["id"]:
+                    incompatible_as_a.append(comp_user["id"])
+                else:
+                    incompatible_as_b.append(comp_user["id"])
                 continue
 
             score_a = self._score(user, comp_user)
             score_b = self._score(comp_user, user)
             score = (score_a + score_b) // 2
-            self._salva_ficha(client, current_user_id, comp_user["id"], score)
+            user_a, user_b = sorted((current_user_id, comp_user["id"]))
+            fichas_to_save.append({
+                "id_user_a": user_a,
+                "id_user_b": user_b,
+                "compatibilidade": score,
+            })
+
+        if fichas_to_save:
+            client.table("ficha").upsert(
+                fichas_to_save, on_conflict="id_user_a,id_user_b"
+            ).execute()
+        if incompatible_as_a:
+            client.table("ficha").delete().eq(
+                "id_user_a", current_user_id
+            ).in_("id_user_b", incompatible_as_a).execute()
+        if incompatible_as_b:
+            client.table("ficha").delete().eq(
+                "id_user_b", current_user_id
+            ).in_("id_user_a", incompatible_as_b).execute()
 
     def _check_gender(self, user, comp):
         if user['pref_genero'] == comp['genero'] and comp['pref_genero'] == user['genero']:

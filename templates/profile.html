@@ -8,7 +8,7 @@
 <p class="eyebrow">Conta</p>
 <h1>Meu perfil</h1>
 </div>
-<form class="glass-card profile-card" method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+<form class="glass-card profile-card" method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data" onsubmit="return confirm(&quot;Atenção: Ao modificar o seu perfil, todos os seus matches, reações ('Amei' e 'Gostei') e interações serão resetados. Deseja realmente continuar?&quot;)">
 {% set account_mode = 'edit' %}
 {% include '_profile_fields.html' %}
 <button class="btn" type="submit">Salvar perfil</button>

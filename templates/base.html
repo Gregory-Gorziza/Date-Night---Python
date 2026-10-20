@@ -7,16 +7,19 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-<div class="navbar">
+<nav class="navbar">
 <a href="{{ url_for('index') }}" class="logo">DateNight</a>
 <div class="nav-links">
 {% if session.get('user_id') %}
-{% if request.endpoint == 'home' %}
+{% if request.endpoint != 'matches' %}
+<a href="{{ url_for('matches') }}">Encontros</a>
+{% endif %}
+{% if request.endpoint == 'matches' %}
+<a href="{{ url_for('home') }}">Home</a>
 <a href="{{ url_for('profile') }}">Perfil</a>
 {% elif request.endpoint == 'profile' %}
 <a href="{{ url_for('home') }}">Home</a>
 {% else %}
-<a href="{{ url_for('home') }}">Home</a>
 <a href="{{ url_for('profile') }}">Perfil</a>
 {% endif %}
 <a href="{{ url_for('logout') }}">Sair</a>
@@ -27,7 +30,7 @@
 <a href="{{ url_for('register') }}">Cadastrar</a>
 {% endif %}
 </div>
-</div>
+</nav>
 
 <div class="container">
 {% with messages = get_flashed_messages(with_categories=true) %}

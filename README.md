@@ -22,6 +22,18 @@ O cadastro aceita até cinco fotos (5 MB cada). As imagens são convertidas para
 
 Para testes locais, coloque uma foto JPG, PNG ou WebP em `teste/`. O login mostra um botão local para gerar 100 perfis demonstrativos; ao gerar outro lote, o lote de teste anterior é substituído.
 
+## Encontros e painel do restaurante
+Execute novamente `schema_postgresql.sql` para habilitar confirmações bilaterais e a tabela `evento`. A migração também remove a coluna legada de restrições alimentares. Cadastre um evento e marque-o como ativo para associar novos matches:
+
+O schema atualizado também cria o histórico `visualizacoes_perfil` e as funções transacionais usadas pelo feed e pelo reset de interações ao salvar o perfil. Execute o arquivo no SQL Editor do Supabase antes de usar essas operações.
+
+```sql
+INSERT INTO evento (nome, data_hora, capacidade_casais, status, restaurante)
+VALUES ('Date Night', '2026-10-24 20:00:00-03', 30, 'active', 'Nome do restaurante');
+```
+
+A seção **Matches** lista os matches e suas confirmações. Configure `RESTAURANT_ACCESS_TOKEN` no `.env` para habilitar `/restaurant`; compartilhe a credencial somente com o estabelecimento. A tela do restaurante recebe apenas primeiros nomes e contagem de presenças. O painel de depuração aparece apenas em acessos locais.
+
 ## 🛠️ Tecnologias Utilizadas
 - **Python** (Flask)
 - **PostgreSQL** (Supabase)

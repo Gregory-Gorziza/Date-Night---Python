@@ -620,6 +620,190 @@ select:focus-visible {
     cursor: pointer;
 }
 
+.matches-page,
+.restaurant-page {
+    width: min(100%, 960px);
+    margin: 0 auto;
+}
+
+.matches-page > .discovery-heading,
+.restaurant-page > .discovery-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.event-summary,
+.match-row,
+.restaurant-roster {
+    width: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: var(--glass-bg);
+}
+
+.event-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.event-summary > div,
+.capacity-meter {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.event-summary strong,
+.capacity-meter strong {
+    font-size: 1.15rem;
+}
+
+.event-summary time,
+.capacity-meter span,
+.match-person span,
+.roster-row span {
+    color: var(--text-secondary);
+}
+
+.match-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.match-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 0.7fr) minmax(0, 1.3fr);
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.match-person h2 {
+    margin-bottom: 0.35rem;
+    font-size: 1.2rem;
+}
+
+.match-state p {
+    margin: 0.25rem 0;
+}
+
+.confirmation-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+.debug-open {
+    position: fixed;
+    right: 15px;
+    bottom: 15px;
+    z-index: 20;
+    min-width: 0;
+    padding: 0.35rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.debug-dialog {
+    width: min(640px, calc(100% - 2rem));
+    max-height: 80vh;
+    margin: auto;
+    padding: 1.25rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+}
+
+.debug-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.dialog-heading,
+.debug-match-list li,
+.roster-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.dialog-heading button {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.debug-match-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    list-style: none;
+}
+
+.debug-match-list li {
+    flex-wrap: wrap;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.debug-match-list small {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+}
+
+.restaurant-login {
+    max-width: 480px;
+}
+
+.restaurant-access-form {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    text-align: left;
+}
+
+.restaurant-roster {
+    margin-top: 1rem;
+}
+
+.restaurant-roster h2 {
+    margin-bottom: 0.75rem;
+    font-size: 1.2rem;
+}
+
+.roster-row {
+    flex-wrap: wrap;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 680px) {
+    .matches-page > .discovery-heading,
+    .restaurant-page > .discovery-heading,
+    .event-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .match-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .confirmation-form .btn {
+        flex: 1 1 145px;
+    }
+}
+
 .upload-control:hover {
     background: rgba(255, 75, 114, 0.08);
 }
@@ -691,38 +875,6 @@ select:focus-visible {
 }
 
 /* Home Feed & Lateral Layout */
-.secret-info-btn {
-    position: fixed;
-    top: 85px;
-    right: 25px;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(10px);
-    color: rgba(255, 255, 255, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 1000;
-    transition: all 0.3s ease;
-}
-
-.secret-info-btn:hover {
-    background: rgba(255, 75, 114, 0.2);
-    border-color: rgba(255, 75, 114, 0.5);
-    color: var(--primary);
-    transform: scale(1.1);
-    box-shadow: 0 0 20px rgba(255, 75, 114, 0.3);
-}
-
-.secret-icon {
-    font-size: 1.25rem;
-    line-height: 1;
-}
-
 .home-tiktok-wrapper {
     width: 100%;
     max-width: 800px;
@@ -732,6 +884,26 @@ select:focus-visible {
     justify-content: center;
     position: relative;
     margin: 0 auto;
+}
+
+.feed-previous-btn {
+    position: fixed;
+    left: 15px;
+    bottom: 15px;
+    z-index: 20;
+    min-width: 0;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.feed-previous-btn:disabled,
+.feed-previous-btn[hidden] {
+    display: none;
 }
 
 .tiktok-container {
@@ -764,6 +936,8 @@ select:focus-visible {
 }
 
 .slide-stage {
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -807,6 +981,9 @@ select:focus-visible {
 }
 
 .side-btn {
+    position: relative;
+    z-index: 3;
+    pointer-events: auto;
     padding: 0.85rem 1.8rem;
     border-radius: 50px;
     font-size: 1rem;
@@ -826,24 +1003,63 @@ select:focus-visible {
     transform: translateY(0);
 }
 
-.btn-like {
-    background: #2ed573;
+.side-btn.btn-like,
+.side-btn.btn-love {
+    border: 1px solid currentColor;
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.55;
+}
+
+.side-btn.btn-like {
+    color: #63d993;
+}
+
+.side-btn.btn-love {
+    color: #ff7890;
+}
+
+.side-btn.is-selected {
+    opacity: 1;
+    filter: saturate(1.15);
+}
+
+.side-btn.is-selected:hover {
+    transform: translateY(-2px) scale(1.03);
+}
+
+.side-btn.btn-like.is-selected {
+    background: #18894a;
+    box-shadow: 0 0 12px rgba(46, 213, 115, 0.58), 0 0 22px rgba(46, 213, 115, 0.28);
+}
+
+.side-btn.btn-love.is-selected {
+    background: #b93050;
+    box-shadow: 0 0 12px rgba(255, 75, 114, 0.58), 0 0 22px rgba(255, 75, 114, 0.28);
+}
+
+.side-btn.is-muted {
+    opacity: 0.28;
+    filter: grayscale(0.6);
+}
+
+.side-btn:disabled {
+    cursor: wait;
+}
+
+.reaction-feedback {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
     color: #ffffff;
-    box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
+    font-size: 0.9rem;
+    text-align: center;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
-.btn-like:hover {
-    box-shadow: 0 6px 20px rgba(46, 213, 115, 0.45);
-}
-
-.btn-love {
-    background: linear-gradient(45deg, var(--primary), var(--secondary));
-    color: #ffffff;
-    box-shadow: 0 4px 15px rgba(255, 75, 114, 0.3);
-}
-
-.btn-love:hover {
-    box-shadow: 0 6px 20px rgba(255, 75, 114, 0.45);
+.reaction-feedback:empty {
+    display: none;
 }
 
 /* Janela Lateral (Drawer) de Informações */

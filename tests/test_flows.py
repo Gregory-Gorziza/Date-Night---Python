@@ -69,7 +69,8 @@ class FakeSupabaseQuery:
         return self
 
     def upsert(self, payload, on_conflict=""):
-        self.action, self.payload = "upsert", dict(payload)
+        self.action = "upsert"
+        self.payload = [dict(row) for row in payload] if isinstance(payload, list) else dict(payload)
         self.conflict_fields = tuple(on_conflict.split(","))
         return self
 
@@ -112,17 +113,20 @@ class FakeSupabaseQuery:
             self.client.tables[self.table_name] = [row for row in rows if not matches(row)]
             result = matching_rows
         else:
-            row = next(
-                (item for item in rows if all(item.get(field) == self.payload.get(field) for field in self.conflict_fields)),
-                None,
-            )
-            if row:
-                row.update(self.payload)
-            else:
-                row = dict(self.payload)
-                row.setdefault("id", max((item.get("id", 0) for item in rows), default=0) + 1)
-                rows.append(row)
-            result = [row]
+            payloads = self.payload if isinstance(self.payload, list) else [self.payload]
+            result = []
+            for payload in payloads:
+                row = next(
+                    (item for item in rows if all(item.get(field) == payload.get(field) for field in self.conflict_fields)),
+                    None,
+                )
+                if row:
+                    row.update(payload)
+                else:
+                    row = dict(payload)
+                    row.setdefault("id", max((item.get("id", 0) for item in rows), default=0) + 1)
+                    rows.append(row)
+                result.append(row)
         return SimpleNamespace(data=result)
 
 
@@ -135,6 +139,65 @@ class FakeSupabaseClient:
 
     def table(self, table_name):
         return FakeSupabaseQuery(self, table_name)
+
+    def rpc(self, function_name, params):
+        return FakeSupabaseRPC(self, function_name, params)
+
+
+class FakeSupabaseRPC:
+    def __init__(self, client, function_name, params):
+        self.client = client
+        self.function_name = function_name
+        self.params = params
+
+    def execute(self):
+        client = self.client
+        function_name = self.function_name
+        params = self.params
+        if client.error_on == "rpc":
+            raise client.error
+        client.calls.append(("rpc", function_name, dict(params), []))
+        if function_name == "record_profile_view":
+            reader_id = params["p_reader_id"]
+            target_id = params["p_target_id"]
+            expected_count = params["p_expected_count"]
+            views = client.tables.setdefault("visualizacoes_perfil", [])
+            view = next((
+                row for row in views
+                if row.get("usuario_leitor_id") == reader_id
+                and row.get("usuario_alvo_id") == target_id
+            ), None)
+            current_count = view.get("contador_aparicoes", 0) if view else 0
+            if current_count == expected_count:
+                if view:
+                    view["contador_aparicoes"] = current_count + 1
+                else:
+                    view = {
+                        "usuario_leitor_id": reader_id,
+                        "usuario_alvo_id": target_id,
+                        "contador_aparicoes": 1,
+                    }
+                    views.append(view)
+                current_count += 1
+            return SimpleNamespace(data=current_count)
+        if function_name != "update_profile_and_reset_interactions":
+            raise AssertionError(f"RPC inesperada: {function_name}")
+        user_id = params["p_user_id"]
+        profile = params["p_profile"]
+        users = client.tables.setdefault("user", [])
+        user = next((row for row in users if row.get("id") == user_id), None)
+        if not user:
+            raise AssertionError("Perfil não encontrado")
+        user.update(profile)
+        client.tables["ficha"] = [
+            row for row in client.tables.get("ficha", [])
+            if row.get("id_user_a") != user_id and row.get("id_user_b") != user_id
+        ]
+        client.tables["visualizacoes_perfil"] = [
+            row for row in client.tables.get("visualizacoes_perfil", [])
+            if row.get("usuario_leitor_id") != user_id and row.get("usuario_alvo_id") != user_id
+        ]
+        return SimpleNamespace(data=[user])
 
 
 def valid_form():
@@ -249,22 +312,27 @@ class SupabaseDataTests(unittest.TestCase):
         user_a.update({"genero": 0, "pref_genero": 1, "imc": 22})
         user_b = user_row(2, "Bea")
         user_b.update({"genero": 1, "pref_genero": 0, "imc": 23})
+        user_c = user_row(3, "Cris")
+        user_c.update({"genero": 1, "pref_genero": 0, "imc": 24})
         ficha = {
             "id": 7, "id_user_a": 1, "id_user_b": 2,
             "compatibilidade": 0, "gostei_a": 1, "amei_a": 0,
             "recusou_a": 0, "gostei_b": 0, "amei_b": 0,
             "recusou_b": 0, "match": 0,
         }
-        client = FakeSupabaseClient({"user": [user_a, user_b], "ficha": [ficha]})
+        client = FakeSupabaseClient({"user": [user_a, user_b, user_c], "ficha": [ficha]})
 
         with patch("compatibility.get_supabase_client", return_value=client):
             Compatibilidade().calculate_compatibility(1)
 
-        self.assertEqual(len(client.tables["ficha"]), 1)
+        self.assertEqual(len(client.tables["ficha"]), 2)
         self.assertEqual(client.tables["ficha"][0]["id_user_a"], 1)
         self.assertEqual(client.tables["ficha"][0]["id_user_b"], 2)
         self.assertEqual(client.tables["ficha"][0]["gostei_a"], 1)
         self.assertGreater(client.tables["ficha"][0]["compatibilidade"], 0)
+        upsert_calls = [call for call in client.calls if call[0] == "ficha" and call[1] == "upsert"]
+        self.assertEqual(len(upsert_calls), 1)
+        self.assertEqual(len(upsert_calls[0][2]), 2)
 
 
 class FlaskFlowTests(unittest.TestCase):
@@ -477,6 +545,126 @@ class FlaskFlowTests(unittest.TestCase):
         self.assertIn(b"href=\"/encounter?position=0\"", response.data)
         self.assertIn(f"/uploads/{'b' * 32}.jpg".encode(), response.data)
 
+    def test_home_does_not_repeat_profile_after_definitive_reaction(self):
+        current_user = user_row(1, "Ana")
+        candidate = user_row(2, "Bea")
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2,
+            "compatibilidade": 19, "gostei_a": 1, "amei_a": 0,
+            "recusou_a": 0, "gostei_b": 0, "amei_b": 0,
+            "recusou_b": 0, "match": 0,
+        }
+        client = FakeSupabaseClient({"user": [current_user, candidate], "ficha": [ficha]})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.Compatibilidade") as compatibility, patch(
+            "app.get_supabase_client", return_value=client
+        ):
+            compatibility.return_value.calculate_compatibility = MagicMock()
+            response = self.client.get("/home")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b'data-profile-id="2"', response.data)
+        self.assertIn(b"Nenhum perfil dispon\xc3\xadvel", response.data)
+
+    def test_home_rotates_photos_for_three_appearances_and_filters_exhausted_profiles(self):
+        current_user = user_row(1, "Ana")
+        first_candidate = user_row(2, "Bea")
+        first_candidate["fotos"] = ["bea-1.jpg", "bea-2.jpg", "bea-3.jpg"]
+        fallback_candidate = user_row(3, "Cris")
+        fallback_candidate["fotos"] = ["cris-1.jpg"]
+        exhausted_candidate = user_row(4, "Dani")
+        exhausted_candidate["fotos"] = ["dani-1.jpg", "dani-2.jpg", "dani-3.jpg"]
+        reacted_candidate = user_row(5, "Eli")
+        fichas = [
+            {"id": 20 + index, "id_user_a": 1, "id_user_b": target_id,
+             "compatibilidade": 20, "gostei_a": 0, "amei_a": 0, "recusou_a": 0,
+             "gostei_b": 0, "amei_b": 0, "recusou_b": 0, "match": 0}
+            for index, target_id in enumerate((2, 3, 4, 5))
+        ]
+        fichas[-1]["gostei_a"] = 1
+        client = FakeSupabaseClient({
+            "user": [current_user, first_candidate, fallback_candidate, exhausted_candidate, reacted_candidate],
+            "ficha": fichas,
+            "visualizacoes_perfil": [
+                {"usuario_leitor_id": 1, "usuario_alvo_id": 3, "contador_aparicoes": 2},
+                {"usuario_leitor_id": 1, "usuario_alvo_id": 4, "contador_aparicoes": 3},
+            ],
+        })
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.Compatibilidade") as compatibility, patch(
+            "app.get_supabase_client", return_value=client
+        ):
+            compatibility.return_value.calculate_compatibility = MagicMock()
+            response = self.client.get("/home")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.count(b'data-profile-id="2"'), 3)
+        self.assertEqual(response.data.count(b'data-profile-id="3"'), 1)
+        self.assertNotIn(b'data-profile-id="4"', response.data)
+        self.assertNotIn(b'data-profile-id="5"', response.data)
+        self.assertLess(response.data.index(b"bea-1.jpg"), response.data.index(b"bea-2.jpg"))
+        self.assertLess(response.data.index(b"bea-2.jpg"), response.data.index(b"bea-3.jpg"))
+        self.assertIn(b"cris-1.jpg", response.data)
+
+    def test_profile_view_counter_is_idempotent_per_appearance(self):
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2,
+            "gostei_a": 0, "amei_a": 0, "gostei_b": 0, "amei_b": 0,
+        }
+        client = FakeSupabaseClient({"ficha": [ficha]})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", return_value=client):
+            first = self.client.post("/profiles/2/view", data={"expected_count": 0})
+            duplicate = self.client.post("/profiles/2/view", data={"expected_count": 0})
+            second = self.client.post("/profiles/2/view", data={"expected_count": 1})
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.json["contador_aparicoes"], 1)
+        self.assertEqual(duplicate.json["contador_aparicoes"], 1)
+        self.assertEqual(second.json["contador_aparicoes"], 2)
+        self.assertEqual(client.tables["visualizacoes_perfil"][0]["contador_aparicoes"], 2)
+
+    def test_home_shows_plain_dev_button_at_bottom_right(self):
+        current_user = user_row(1, "Ana")
+        client = FakeSupabaseClient({"user": [current_user], "ficha": []})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.Compatibilidade") as compatibility, patch(
+            "app.get_supabase_client", return_value=client
+        ):
+            compatibility.return_value.calculate_compatibility = MagicMock()
+            response = self.client.get("/home")
+
+        stylesheet = (Path(app.static_folder) / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'class="btn btn-secondary debug-open"', response.data)
+        self.assertIn(b"home.js?v=feed-views-v1", response.data)
+        self.assertIn(b"\nDev\n</button>", response.data)
+        self.assertNotIn("✧".encode(), response.data)
+        self.assertIn("right: 15px;", stylesheet)
+        self.assertIn("bottom: 15px;", stylesheet)
+
+    def test_home_reaction_script_reads_form_action_attribute(self):
+        script = (Path(app.static_folder) / "js" / "home.js").read_text(encoding="utf-8")
+        self.assertIn("form.getAttribute('action')", script)
+        self.assertIn("fetch(actionUrl", script)
+        self.assertNotIn("fetch(form.action", script)
+
+    def test_home_backend_error_is_logged_and_returns_retry_message(self):
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app._load_match_candidates", side_effect=RuntimeError("backend timeout")), patch(
+            "app.app.logger.exception"
+        ) as log_exception:
+            response = self.client.get("/home")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn(b"N\xc3\xa3o foi poss\xc3\xadvel carregar a Home agora", response.data)
+        log_exception.assert_called_once()
+
     def test_home_explains_missing_supabase_table(self):
         error = APIError({
             "code": "PGRST205",
@@ -489,12 +677,13 @@ class FlaskFlowTests(unittest.TestCase):
             session["user_id"] = 1
         with patch("app.Compatibilidade") as compatibility, patch(
             "app.get_supabase_client", return_value=client
-        ), patch("app.app.logger.exception"):
+        ), patch("app.app.logger.exception") as log_exception:
             compatibility.return_value.calculate_compatibility = MagicMock()
             response = self.client.get("/home")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Execute schema_postgresql.sql", response.data)
+        self.assertEqual(response.status_code, 503)
+        self.assertIn(b"N\xc3\xa3o foi poss\xc3\xadvel carregar a Home agora", response.data)
+        log_exception.assert_called_once()
 
     def test_encounter_shows_one_profile_with_navigation_and_actions(self):
         current_user = user_row(1, "Ana")
@@ -559,6 +748,210 @@ class FlaskFlowTests(unittest.TestCase):
         self.assertEqual(client.tables["ficha"][0]["match"], 0)
         self.assertIn("/encounter?position=1", response.location)
 
+    def test_ajax_reaction_returns_json_and_overwrites_previous_vote(self):
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2,
+            "gostei_a": 0, "amei_a": 1, "gostei_b": 0, "amei_b": 0, "match": 0,
+        }
+        client = FakeSupabaseClient({"ficha": [ficha]})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        headers = {"X-Requested-With": "XMLHttpRequest"}
+        with patch("app.get_supabase_client", return_value=client):
+            like_response = self.client.post(
+                "/matches/8/action",
+                data={"perfil_id": "2", "tipo_reacao": "gostei"},
+                headers=headers,
+            )
+            love_response = self.client.post(
+                "/matches/8/action",
+                data={"perfil_id": "2", "tipo_reacao": "amei"},
+                headers=headers,
+            )
+            toggle_response = self.client.post(
+                "/matches/8/action",
+                data={"perfil_id": "2", "tipo_reacao": "amei"},
+                headers=headers,
+            )
+
+        self.assertEqual(like_response.status_code, 200)
+        self.assertTrue(like_response.is_json)
+        self.assertIsNone(like_response.location)
+        self.assertEqual(like_response.json["reaction"], "like")
+        self.assertFalse(like_response.json["loved"])
+        self.assertEqual(love_response.status_code, 200)
+        self.assertTrue(love_response.is_json)
+        self.assertIsNone(love_response.location)
+        self.assertEqual(love_response.json["reaction"], "love")
+        self.assertTrue(love_response.json["loved"])
+        self.assertFalse(love_response.json["liked"])
+        self.assertEqual(toggle_response.status_code, 200)
+        self.assertIsNone(toggle_response.json["reaction"])
+        self.assertFalse(toggle_response.json["liked"])
+        self.assertFalse(toggle_response.json["loved"])
+        self.assertFalse(client.tables["ficha"][0]["gostei_a"])
+        self.assertFalse(client.tables["ficha"][0]["amei_a"])
+        self.assertEqual(len(client.tables["ficha"]), 1)
+
+    def test_ajax_reaction_returns_json_for_unexpected_backend_errors(self):
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", side_effect=RuntimeError("unexpected backend error")), patch(
+            "app.app.logger.exception"
+        ) as log_exception:
+            response = self.client.post(
+                "/matches/8/action",
+                data={"perfil_id": "2", "tipo_reacao": "amei"},
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertTrue(response.is_json)
+        self.assertFalse(response.json["success"])
+        log_exception.assert_called_once()
+
+    def test_ajax_reaction_returns_json_404_when_match_does_not_exist(self):
+        client = FakeSupabaseClient({"ficha": []})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", return_value=client):
+            response = self.client.post(
+                "/matches/404/action",
+                data={"perfil_id": "2", "tipo_reacao": "amei"},
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(response.is_json)
+        self.assertEqual(response.json["error"], "Perfil não encontrado.")
+
+    def test_match_confirmation_waits_for_both_participants(self):
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2, "match": 1,
+            "user1_confirmed": 0, "user2_confirmed": 0, "status": "pending", "event_id": 4,
+        }
+        event = {
+            "id": 4, "data_hora": "2026-10-24T20:00:00-03:00",
+            "capacidade_casais": 12, "status": "active",
+        }
+        client = FakeSupabaseClient({"ficha": [ficha], "evento": [event]})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", return_value=client):
+            first_response = self.client.post(
+                "/matches/8/confirmation", data={"action": "confirm"}
+            )
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(first_response.json["state"], "waiting")
+        self.assertEqual(client.tables["ficha"][0]["status"], "waiting")
+        self.assertEqual(client.tables["ficha"][0]["user1_confirmed"], 1)
+
+        with self.client.session_transaction() as session:
+            session["user_id"] = 2
+        with patch("app.get_supabase_client", return_value=client):
+            second_response = self.client.post(
+                "/matches/8/confirmation", data={"action": "confirm"}
+            )
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(second_response.json["state"], "confirmed")
+        self.assertEqual(second_response.json["event_date"], event["data_hora"])
+        self.assertEqual(second_response.json["confirmed_count"], 1)
+        self.assertEqual(second_response.json["capacity"], 12)
+        self.assertEqual(client.tables["ficha"][0]["status"], "confirmed")
+
+    def test_match_confirmation_rejects_nonparticipant(self):
+        client = FakeSupabaseClient({"ficha": [{
+            "id": 8, "id_user_a": 1, "id_user_b": 2, "match": 1,
+            "user1_confirmed": 0, "user2_confirmed": 0,
+        }]})
+        with self.client.session_transaction() as session:
+            session["user_id"] = 3
+        with patch("app.get_supabase_client", return_value=client):
+            response = self.client.post(
+                "/matches/8/confirmation", data={"action": "confirm"}
+            )
+        self.assertEqual(response.status_code, 403)
+
+    def test_matches_page_shows_pending_confirmation_and_local_debug_panel(self):
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2, "match": 1,
+            "compatibilidade": 25, "status": "pending",
+            "user1_confirmed": 0, "user2_confirmed": 0,
+        }
+        client = FakeSupabaseClient({
+            "ficha": [ficha], "user": [user_row(2, "Bea")], "evento": [],
+        })
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", return_value=client):
+            response = self.client.get("/matches")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Confirmar presen\xc3\xa7a", response.data)
+        self.assertIn(b"Recusar", response.data)
+        self.assertIn(b">Dev</button>", response.data)
+        self.assertNotIn(b">Encontros</a>", response.data)
+        self.assertLess(response.data.index(b">Home</a>"), response.data.index(b">Perfil</a>"))
+        self.assertLess(response.data.index(b">Perfil</a>"), response.data.index(b">Sair</a>"))
+
+    def test_matches_page_survives_missing_event_table(self):
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2, "match": 1,
+            "compatibilidade": 25, "status": "pending",
+            "user1_confirmed": 0, "user2_confirmed": 0,
+        }
+        client = FakeSupabaseClient({
+            "ficha": [ficha], "user": [user_row(2, "Bea")],
+        })
+        original_table = client.table
+        schema_error = APIError({
+            "code": "PGRST205", "message": "table not found in schema cache",
+            "details": None, "hint": None,
+        })
+
+        def table(table_name):
+            if table_name == "evento":
+                raise schema_error
+            return original_table(table_name)
+
+        client.table = table
+        with self.client.session_transaction() as session:
+            session["user_id"] = 1
+        with patch("app.get_supabase_client", return_value=client), patch(
+            "app.app.logger.exception"
+        ) as log_exception:
+            response = self.client.get("/matches")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Houve um Match", response.data)
+        self.assertNotIn(b"Pr\xc3\xb3ximo evento", response.data)
+        log_exception.assert_called_once()
+
+    def test_restaurant_dashboard_only_shows_first_names_and_reservation_data(self):
+        event = {
+            "id": 4, "nome": "Jantar de outubro", "data_hora": "2026-10-24T20:00:00Z",
+            "capacidade_casais": 12, "status": "active", "restaurante": "Casa",
+        }
+        ficha = {
+            "id": 8, "id_user_a": 1, "id_user_b": 2, "event_id": 4, "match": 1,
+            "status": "confirmed", "user1_confirmed": 1, "user2_confirmed": 1,
+        }
+        first = user_row(1, "Ana Silva")
+        first.update({"email": "ana.private@example.com"})
+        second = user_row(2, "Bea Costa")
+        second.update({"email": "bea.private@example.com"})
+        client = FakeSupabaseClient({"evento": [event], "ficha": [ficha], "user": [first, second]})
+        with self.client.session_transaction() as session:
+            session["restaurant_authenticated"] = True
+        with patch.dict(app.config, {"RESTAURANT_ACCESS_TOKEN": "restaurant-test-token"}), patch(
+            "app.get_supabase_client", return_value=client
+        ):
+            response = self.client.get("/restaurant")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Ana + Bea", response.data)
+        self.assertNotIn(b"Silva", response.data)
+        self.assertNotIn(b"Costa", response.data)
+        self.assertNotIn(b"private@example.com", response.data)
+
     def test_skip_keeps_position_after_removing_candidate(self):
         ficha = {"id": 8, "id_user_a": 1, "id_user_b": 2, "recusou_a": 0}
         client = FakeSupabaseClient({"ficha": [ficha]})
@@ -597,13 +990,31 @@ class FlaskFlowTests(unittest.TestCase):
             response = self.client.get("/profile")
 
         self.assertEqual(response.status_code, 200)
+        self.assertLess(response.data.index(b">Encontros</a>"), response.data.index(b">Home</a>"))
+        self.assertLess(response.data.index(b">Home</a>"), response.data.index(b">Sair</a>"))
+        self.assertNotIn(b">Perfil</a>", response.data)
+        self.assertNotIn(b"restricoes_alimentares", response.data)
         self.assertIn(b"Salvar perfil", response.data)
         self.assertIn(f"/uploads/{'c' * 32}.jpg".encode(), response.data)
         self.assertIn(b'enctype="multipart/form-data"', response.data)
+        self.assertIn(
+            "Atenção: Ao modificar o seu perfil, todos os seus matches, reações ('Amei' e 'Gostei') e interações serão resetados".encode(),
+            response.data,
+        )
 
         updated_user = user_row(1, "Ana")
         updated_user["fotos"] = []
-        client = FakeSupabaseClient({"user": [updated_user]})
+        client = FakeSupabaseClient({
+            "user": [updated_user],
+            "ficha": [
+                {"id": 10, "id_user_a": 1, "id_user_b": 2},
+                {"id": 11, "id_user_a": 2, "id_user_b": 3},
+            ],
+            "visualizacoes_perfil": [
+                {"usuario_leitor_id": 1, "usuario_alvo_id": 2, "contador_aparicoes": 2},
+                {"usuario_leitor_id": 2, "usuario_alvo_id": 3, "contador_aparicoes": 1},
+            ],
+        })
         form = valid_form()
         form.pop("senha")
         form.pop("confirmar_senha")
@@ -613,6 +1024,10 @@ class FlaskFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.location, "/profile")
         self.assertEqual(client.tables["user"][0]["fisico"], int(form["fisico"]))
+        self.assertEqual(client.tables["ficha"], [{"id": 11, "id_user_a": 2, "id_user_b": 3}])
+        self.assertEqual(len(client.tables["visualizacoes_perfil"]), 1)
+        self.assertEqual(client.tables["visualizacoes_perfil"][0]["usuario_leitor_id"], 2)
+        self.assertTrue(any(call[0] == "rpc" for call in client.calls))
 
     def test_profile_can_remove_and_add_photos(self):
         with TemporaryDirectory() as folder:

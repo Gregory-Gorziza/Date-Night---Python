@@ -3,29 +3,31 @@
 {% block title %}Home - DateNight{% endblock %}
 
 {% block content %}
-<button type="button" id="secretInfoBtn" class="secret-info-btn">
-<span class="secret-icon">✧</span>
+<button type="button" id="secretInfoBtn" class="btn btn-secondary debug-open" aria-label="Abrir detalhes do perfil atual">
+Dev
 </button>
 
 <div class="home-tiktok-wrapper">
+<button type="button" id="previousProfileBtn" class="feed-previous-btn" disabled hidden>Voltar</button>
 <div class="tiktok-container" id="tiktokContainer">
 {% if candidates %}
 {% for candidate in candidates %}
-<div class="tiktok-slide" data-index="{{ loop.index0 }}">
-<div class="slide-stage">
-<button form="form-match-{{ candidate.ficha_id }}" class="side-btn btn-like" type="submit" name="action" value="like">Gostei</button>
+<div class="tiktok-slide" data-index="{{ loop.index0 }}" data-profile-id="{{ candidate.id }}" data-appearance-index="{{ candidate.appearance_index }}" data-view-url="{{ url_for('record_profile_view', profile_id=candidate.id) }}">
+<div class="slide-stage" data-match-actions>
+<button form="form-match-{{ candidate.ficha_id }}-{{ loop.index0 }}" class="side-btn btn-like{% if candidate.my_like %} is-selected{% elif candidate.my_love %} is-muted{% endif %}" type="submit" name="action" value="like" aria-pressed="{{ 'true' if candidate.my_like else 'false' }}">Gostei</button>
 
 <div class="photo-frame">
-{% if candidate.fotos %}
-<img class="tiktok-photo" src="{{ url_for('uploaded_photo', filename=candidate.fotos[0]) }}" alt="Foto">
+{% if candidate.feed_photo %}
+<img class="tiktok-photo" src="{{ url_for('uploaded_photo', filename=candidate.feed_photo) }}" alt="Foto {{ candidate.appearance_number }} de {{ candidate.nome }}">
 {% else %}
 <div class="tiktok-photo-placeholder">Sem Foto</div>
 {% endif %}
+<p class="reaction-feedback" aria-live="polite"></p>
 </div>
 
-<button form="form-match-{{ candidate.ficha_id }}" class="side-btn btn-love" type="submit" name="action" value="love">Amei</button>
+<button form="form-match-{{ candidate.ficha_id }}-{{ loop.index0 }}" class="side-btn btn-love{% if candidate.my_love %} is-selected{% elif candidate.my_like %} is-muted{% endif %}" type="submit" name="action" value="love" aria-pressed="{{ 'true' if candidate.my_love else 'false' }}">Amei</button>
 
-<form id="form-match-{{ candidate.ficha_id }}" method="POST" action="{{ url_for('match_action', ficha_id=candidate.ficha_id) }}">
+<form id="form-match-{{ candidate.ficha_id }}-{{ loop.index0 }}" method="POST" action="{{ url_for('match_action', ficha_id=candidate.ficha_id) }}">
 <input type="hidden" name="position" value="{{ loop.index0 }}">
 </form>
 
@@ -74,6 +76,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/home.js', v='feed-views-v1') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var container = document.getElementById('tiktokContainer');
