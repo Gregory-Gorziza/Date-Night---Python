@@ -18,6 +18,14 @@ O projeto Java original usa JDBC/MySQL; esta versão Flask usa a API REST do Sup
 
 No painel Supabase, crie uma chave secreta server-side para `SUPABASE_SECRET_KEY`. Não use a chave `sb_publishable` como chave do servidor: ela respeita RLS e não dá ao app Flask, que tem login próprio, acesso administrativo. Nunca envie nem versione a chave secreta.
 
+O schema habilita RLS na tabela `public.user` sem políticas para acesso público; os dados devem ser acessados somente pelo backend Flask usando a chave secreta. Para aplicar essa proteção em um banco já existente, execute no SQL Editor do Supabase:
+
+```sql
+ALTER TABLE public."user" ENABLE ROW LEVEL SECURITY;
+```
+
+Isso corrige o alerta sem reexecutar outras alterações do arquivo de migração. Nunca use a chave secreta no navegador.
+
 O cadastro aceita até cinco fotos (5 MB cada). As imagens são convertidas para JPEG e salvas em `instance/uploads`, fora da pasta pública; faça backup dessa pasta junto ao banco. Em hospedagem, use um volume persistente ou migre para armazenamento de objetos.
 
 Para testes locais, coloque uma foto JPG, PNG ou WebP em `teste/`. O login mostra um botão local para gerar 100 perfis demonstrativos; ao gerar outro lote, o lote de teste anterior é substituído.
